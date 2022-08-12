@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.analysis.project.structure.KtModule
 import org.jetbrains.kotlin.analysis.project.structure.KtSourceModule
 import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.platform.TargetPlatform
+import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.resolve.PlatformDependentAnalyzerServices
 
 internal class KtSourceModuleImpl(
@@ -26,4 +27,7 @@ internal class KtSourceModuleImpl(
     internal val sourceRoots: List<PsiFileSystemItem>,
 ) : KtSourceModule, KtModuleWithPlatform {
     override val analyzerServices: PlatformDependentAnalyzerServices = super.analyzerServices
+
+    override val ktFiles: List<KtFile>
+        get() = sourceRoots.filterIsInstance<KtFile>()
 }

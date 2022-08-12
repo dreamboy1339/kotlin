@@ -10,6 +10,7 @@ import com.intellij.psi.search.GlobalSearchScope
 import org.jetbrains.kotlin.analysis.project.structure.*
 import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.platform.TargetPlatform
+import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.resolve.PlatformDependentAnalyzerServices
 import org.jetbrains.kotlin.test.frontend.fir.getAnalyzerServices
 import java.nio.file.Path
@@ -32,6 +33,9 @@ class KtSourceModuleImpl(
     override val directRegularDependencies: MutableList<KtModule> = mutableListOf()
     override val directRefinementDependencies: MutableList<KtModule> = mutableListOf()
     override val directFriendDependencies: MutableList<KtModule> = mutableListOf()
+
+    override val ktFiles: List<KtFile>
+        get() = TODO("Not yet implemented")
 }
 
 class KtJdkModuleImpl(

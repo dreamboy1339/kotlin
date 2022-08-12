@@ -9,6 +9,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.psi.search.GlobalSearchScope
 import org.jetbrains.kotlin.config.LanguageVersionSettings
 import org.jetbrains.kotlin.platform.TargetPlatform
+import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.resolve.PlatformDependentAnalyzerServices
 import java.nio.file.Path
 
@@ -88,6 +89,8 @@ public interface KtSourceModule : KtModule {
      * A set of Kotlin settings, like API version, supported features and flags.
      */
     public val languageVersionSettings: LanguageVersionSettings
+
+    public val ktFiles: List<KtFile>
 }
 
 /**
