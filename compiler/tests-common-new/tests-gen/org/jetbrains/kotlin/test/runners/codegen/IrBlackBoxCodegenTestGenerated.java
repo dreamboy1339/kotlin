@@ -32733,6 +32733,12 @@ public class IrBlackBoxCodegenTestGenerated extends AbstractIrBlackBoxCodegenTes
             }
 
             @Test
+            @TestMetadata("expectInterfaceInSupertypes.kt")
+            public void testExpectInterfaceInSupertypes() throws Exception {
+                runTest("compiler/testData/codegen/box/multiplatform/multiModule/expectInterfaceInSupertypes.kt");
+            }
+
+            @Test
             @TestMetadata("kt-51753-1.kt")
             public void testKt_51753_1() throws Exception {
                 runTest("compiler/testData/codegen/box/multiplatform/multiModule/kt-51753-1.kt");
