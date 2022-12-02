@@ -3120,7 +3120,7 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
 
                 @Test
                 public void testAllFilesPresentInAdapted() throws Exception {
-                    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler/testData/diagnostics/tests/callableReference/adapted"), Pattern.compile("^(.*)\\.kts?$"), Pattern.compile("^(.+)\\.fir\\.kts?$"), true);
+                    KtTestUtil.assertAllTestsPresentByMetadataWithExcluded(this.getClass(), new File("compiler/testData/diagnostics/tests/callableReference/adapted"), Pattern.compile("^(.*)\\.kts?$"), Pattern.compile("^(.+)\\.(fir|ll)\\.kts?$"), true);
                 }
 
                 @Test
@@ -14469,6 +14469,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
             }
 
             @Test
+            @TestMetadata("nothingVsParameterBound.kt")
+            public void testNothingVsParameterBound() throws Exception {
+                runTest("compiler/testData/diagnostics/tests/inference/nothingVsParameterBound.kt");
+            }
+
+            @Test
             @TestMetadata("nullableTypeArgumentWithNotNullUpperBound.kt")
             public void testNullableTypeArgumentWithNotNullUpperBound() throws Exception {
                 runTest("compiler/testData/diagnostics/tests/inference/nullableTypeArgumentWithNotNullUpperBound.kt");
@@ -16567,6 +16573,12 @@ public class DiagnosticTestGenerated extends AbstractDiagnosticTest {
                 @TestMetadata("reportImplicitNothingOnlyForOwnTypeParameters.kt")
                 public void testReportImplicitNothingOnlyForOwnTypeParameters() throws Exception {
                     runTest("compiler/testData/diagnostics/tests/inference/nothingType/reportImplicitNothingOnlyForOwnTypeParameters.kt");
+                }
+
+                @Test
+                @TestMetadata("selectWithNull.kt")
+                public void testSelectWithNull() throws Exception {
+                    runTest("compiler/testData/diagnostics/tests/inference/nothingType/selectWithNull.kt");
                 }
 
                 @Test
