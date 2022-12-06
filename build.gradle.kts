@@ -858,7 +858,7 @@ tasks {
     register("publishIdeArtifacts") {
         idePluginDependency {
             @Suppress("UNCHECKED_CAST")
-            dependsOn((rootProject.extra["compilerArtifactsForIde"] as List<String>).map { "$it:publish" })
+            dependsOn((rootProject.extra["compilerArtifactsForIde"] as List<String>).map { "$it:publishToMavenLocal" })
         }
     }
 
