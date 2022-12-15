@@ -5,7 +5,6 @@
 
 package org.jetbrains.kotlin.cli.jvm.compiler
 
-import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.StandardFileSystems
 import com.intellij.openapi.vfs.VirtualFile
@@ -43,7 +42,6 @@ import java.io.File
 object KotlinToJVMBytecodeCompiler {
     internal fun compileModules(
         environment: KotlinCoreEnvironment,
-        rootDisposable: Disposable,
         buildFile: File?,
         chunk: List<Module>,
         repeat: Boolean = false
@@ -54,7 +52,7 @@ object KotlinToJVMBytecodeCompiler {
         if (repeats != null && !repeat) {
             val performanceManager = environment.configuration[CLIConfigurationKeys.PERF_MANAGER]
             return (0 until repeats).map {
-                val result = compileModules(environment, rootDisposable, buildFile, chunk, repeat = true)
+                val result = compileModules(environment, buildFile, chunk, repeat = true)
                 performanceManager?.notifyRepeat(repeats, it)
                 result
             }.last()
@@ -81,9 +79,9 @@ object KotlinToJVMBytecodeCompiler {
             return FirKotlinToJvmBytecodeCompiler.compileModulesUsingFrontendIR(
                 projectEnvironment,
                 environment.configuration,
-                rootDisposable,
                 environment.messageCollector,
-                environment.getSourceFiles(), buildFile, chunk, extendedAnalysisMode
+                environment.getSourceFiles(),
+                buildFile, chunk, extendedAnalysisMode
             )
         }
 
