@@ -105,7 +105,7 @@ internal class SymbolLightFieldForProperty private constructor(
         in GranularModifiersBox.VISIBILITY_MODIFIERS -> GranularModifiersBox.computeVisibilityForMember(ktModule, propertySymbolPointer)
         in GranularModifiersBox.MODALITY_MODIFIERS -> {
             val modality = withPropertySymbol { propertySymbol ->
-                if (propertySymbol.isVal) {
+                if (propertySymbol.isVal || propertySymbol.isDelegatedProperty) {
                     PsiModifier.FINAL
                 } else {
                     propertySymbol.computeSimpleModality()?.takeIf {
