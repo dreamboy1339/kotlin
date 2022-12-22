@@ -178,6 +178,9 @@ object StandardClassIds {
 
         val AccessibleLateinitPropertyLiteral = "AccessibleLateinitPropertyLiteral".internalId()
 
+        val TypedEquals = "TypedEquals".baseId()
+        val AllowTypedEquals = "AllowTypedEquals".baseId()
+
         object Java {
             val Deprecated = "Deprecated".javaLangId()
             val Repeatable = "Repeatable".javaAnnotationId()

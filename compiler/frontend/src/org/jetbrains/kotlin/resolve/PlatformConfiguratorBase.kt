@@ -55,6 +55,8 @@ private val DEFAULT_DECLARATION_CHECKERS = listOf(
     UnsupportedUntilRangeDeclarationChecker,
     DataObjectContentChecker,
     EnumEntriesRedeclarationChecker,
+    TypedEqualsApplicabilityChecker,
+    AllowTypedEqualsApplicabilityChecker,
 )
 
 private val DEFAULT_CALL_CHECKERS = listOf(
