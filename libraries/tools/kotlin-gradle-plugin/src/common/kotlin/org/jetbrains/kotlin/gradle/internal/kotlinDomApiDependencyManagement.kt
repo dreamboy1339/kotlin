@@ -77,20 +77,20 @@ private fun addKotlinDomApiToKpmProject(
 private fun KotlinTarget.addKotlinDomApiDependency(
     configurations: ConfigurationContainer,
     dependencies: DependencyHandler,
-    coreLibrariesVersion: Provider<String>
+    coreLibrariesVersion: Provider<String>,
+    mixedMode: Boolean = false
 ) {
     if (this is KotlinJsTarget) {
-        irTarget?.addKotlinDomApiDependency(configurations, dependencies, coreLibrariesVersion)
+        irTarget?.addKotlinDomApiDependency(configurations, dependencies, coreLibrariesVersion, true)
     }
 
     compilations.configureEach { compilation ->
         if (compilation.platformType != KotlinPlatformType.js) return@configureEach
         if (compilation !is KotlinJsIrCompilation) return@configureEach
 
-        val scopeConfiguration = configurations
-            .sourceSetDependencyConfigurationByScope(compilation, KotlinDependencyScope.API_SCOPE)
-
         compilation.allKotlinSourceSets.forEach { kotlinSourceSet ->
+            val scopeConfiguration = configurations
+                .sourceSetDependencyConfigurationByScope(if (mixedMode) compilation else kotlinSourceSet, KotlinDependencyScope.API_SCOPE)
             scopeConfiguration.withDependencies { dependencySet ->
                 if (isKotlinDomApiAddedByUser(configurations, kotlinSourceSet)) return@withDependencies
 
