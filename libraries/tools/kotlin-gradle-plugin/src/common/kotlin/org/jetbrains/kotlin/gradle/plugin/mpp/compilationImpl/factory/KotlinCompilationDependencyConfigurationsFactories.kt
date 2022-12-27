@@ -96,7 +96,7 @@ private fun interface ConfigurationNaming {
         private val compilationName: String
     ) : ConfigurationNaming {
         override fun name(vararg parts: String): String = lowerCamelCaseName(
-            target.disambiguationClassifierInPlatform, compilationName.takeIf { it != KotlinCompilation.MAIN_COMPILATION_NAME }, *parts
+            target.disambiguationClassifier, compilationName.takeIf { it != KotlinCompilation.MAIN_COMPILATION_NAME }, *parts
         )
 
         private val KotlinTarget.disambiguationClassifierInPlatform: String?

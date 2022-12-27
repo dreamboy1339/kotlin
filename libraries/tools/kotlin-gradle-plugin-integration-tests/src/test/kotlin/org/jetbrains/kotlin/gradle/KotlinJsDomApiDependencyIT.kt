@@ -200,4 +200,19 @@ class KotlinJsDomApiDependencyIT : KGPBaseTest() {
             }
         }
     }
+
+    @DisplayName("Kotlin/JS DOM API automatically added as dependency to IR target in BOTH mode")
+    @GradleTest
+    fun testJsDomApiCompatWithBothTargets(gradleVersion: GradleVersion) {
+        project("kotlin-js-dom-api-compat", gradleVersion) {
+
+            build(
+                "assemble",
+                buildOptions = buildOptions.copy(jsOptions = defaultJsOptions.copy(jsCompilerType = KotlinJsCompilerType.BOTH))
+            ) {
+                assertTasksExecuted(":compileKotlinJsIr")
+                assertTasksExecuted(":compileKotlinJsLegacy")
+            }
+        }
+    }
 }
