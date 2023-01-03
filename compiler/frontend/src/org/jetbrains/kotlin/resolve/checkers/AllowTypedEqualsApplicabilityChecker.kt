@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.resolve.checkers
 
+import org.jetbrains.kotlin.config.LanguageFeature
 import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
 import org.jetbrains.kotlin.diagnostics.Errors
 import org.jetbrains.kotlin.name.StandardClassIds
@@ -17,6 +18,15 @@ object AllowTypedEqualsApplicabilityChecker : DeclarationChecker {
         if (declaration !is KtClass) return
         val annotation = descriptor.annotations.findAnnotation(StandardClassIds.Annotations.AllowTypedEquals.asSingleFqName()) ?: return
         val annotationEntry = DescriptorToSourceUtils.getSourceFromAnnotation(annotation) ?: return
+        if (!context.languageVersionSettings.supportsFeature(LanguageFeature.CustomEqualsInValueClasses)) {
+            context.trace.report(
+                Errors.UNSUPPORTED_FEATURE.on(
+                    annotationEntry,
+                    LanguageFeature.CustomEqualsInValueClasses to context.languageVersionSettings
+                )
+            )
+            return
+        }
         if (!declaration.isValue() && !declaration.isInline()) {
             context.trace.report(Errors.INAPPLICABLE_ALLOW_TYPED_EQUALS_ANNOTATION.on(annotationEntry))
         }

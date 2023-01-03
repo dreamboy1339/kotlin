@@ -18103,6 +18103,12 @@ public class FirOldFrontendDiagnosticsWithLightTreeTestGenerated extends Abstrac
             }
 
             @Test
+            @TestMetadata("customEqualsFeatureOff.kt")
+            public void testCustomEqualsFeatureOff() throws Exception {
+                runTest("compiler/testData/diagnostics/tests/inlineClasses/customEqualsFeatureOff.kt");
+            }
+
+            @Test
             @TestMetadata("delegatedPropertyInInlineClass.kt")
             public void testDelegatedPropertyInInlineClass() throws Exception {
                 runTest("compiler/testData/diagnostics/tests/inlineClasses/delegatedPropertyInInlineClass.kt");

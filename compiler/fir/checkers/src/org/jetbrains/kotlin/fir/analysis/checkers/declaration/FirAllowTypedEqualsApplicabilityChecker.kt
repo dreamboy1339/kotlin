@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.fir.analysis.checkers.declaration
 
+import org.jetbrains.kotlin.config.LanguageFeature
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
@@ -17,6 +18,15 @@ import org.jetbrains.kotlin.name.StandardClassIds
 object FirAllowTypedEqualsApplicabilityChecker : FirRegularClassChecker() {
     override fun check(declaration: FirRegularClass, context: CheckerContext, reporter: DiagnosticReporter) {
         val annotation = declaration.annotations.getAnnotationByClassId(StandardClassIds.Annotations.AllowTypedEquals) ?: return
+        if (!context.languageVersionSettings.supportsFeature(LanguageFeature.CustomEqualsInValueClasses)) {
+            reporter.reportOn(
+                annotation.source,
+                FirErrors.UNSUPPORTED_FEATURE,
+                LanguageFeature.CustomEqualsInValueClasses to context.languageVersionSettings,
+                context
+            )
+            return
+        }
         if (!declaration.isInline) {
             reporter.reportOn(annotation.source, FirErrors.INAPPLICABLE_ALLOW_TYPED_EQUALS_ANNOTATION, context)
         }

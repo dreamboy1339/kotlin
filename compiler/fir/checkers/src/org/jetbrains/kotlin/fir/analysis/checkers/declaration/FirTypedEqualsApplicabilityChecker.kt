@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.fir.analysis.checkers.declaration
 
+import org.jetbrains.kotlin.config.LanguageFeature
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
@@ -26,6 +27,15 @@ object FirTypedEqualsApplicabilityChecker : FirFunctionChecker() {
 
     override fun check(declaration: FirFunction, context: CheckerContext, reporter: DiagnosticReporter) {
         val typedEqualsAnnotation = declaration.getAnnotationByClassId(StandardClassIds.Annotations.TypedEquals) ?: return
+        if (!context.languageVersionSettings.supportsFeature(LanguageFeature.CustomEqualsInValueClasses)) {
+            reporter.reportOn(
+                typedEqualsAnnotation.source,
+                FirErrors.UNSUPPORTED_FEATURE,
+                LanguageFeature.CustomEqualsInValueClasses to context.languageVersionSettings,
+                context
+            )
+            return
+        }
         if (declaration !is FirSimpleFunction) {
             reporter.reportOn(
                 typedEqualsAnnotation.source,

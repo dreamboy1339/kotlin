@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.resolve.checkers
 
+import org.jetbrains.kotlin.config.LanguageFeature
 import org.jetbrains.kotlin.descriptors.ClassDescriptor
 import org.jetbrains.kotlin.descriptors.DeclarationDescriptor
 import org.jetbrains.kotlin.descriptors.FunctionDescriptor
@@ -27,6 +28,15 @@ object TypedEqualsApplicabilityChecker : DeclarationChecker {
             descriptor.annotations.findAnnotation(StandardClassIds.Annotations.TypedEquals.asSingleFqName()) ?: return
         val functionDescriptor = context.trace.bindingContext.get(BindingContext.FUNCTION, declaration) ?: return
         val annotationEntry = DescriptorToSourceUtils.getSourceFromAnnotation(typedEqualsAnnotation) ?: return
+        if (!context.languageVersionSettings.supportsFeature(LanguageFeature.CustomEqualsInValueClasses)) {
+            context.trace.report(
+                Errors.UNSUPPORTED_FEATURE.on(
+                    annotationEntry,
+                    LanguageFeature.CustomEqualsInValueClasses to context.languageVersionSettings
+                )
+            )
+            return
+        }
         val parentClass = (functionDescriptor.containingDeclaration as? ClassDescriptor)?.takeIf { it.isValueClass() }
         if (parentClass == null) {
             context.trace.report(
