@@ -227,7 +227,7 @@ object FirValueClassDeclarationChecker : FirRegularClassChecker() {
                         return@forEach
                     }
                     if (it.isEquals()) equalsFromAnyOverriding = it
-                    if (it.isTypedEquals) typedEquals = it
+                    if (it.isTypedEquals(context.session)) typedEquals = it
                 }
                 equalsFromAnyOverriding to typedEquals
             }

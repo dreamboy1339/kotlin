@@ -17,7 +17,7 @@ import org.jetbrains.kotlin.name.StandardClassIds
 
 object FirAllowTypedEqualsApplicabilityChecker : FirRegularClassChecker() {
     override fun check(declaration: FirRegularClass, context: CheckerContext, reporter: DiagnosticReporter) {
-        val annotation = declaration.annotations.getAnnotationByClassId(StandardClassIds.Annotations.AllowTypedEquals) ?: return
+        val annotation = declaration.annotations.getAnnotationByClassId(StandardClassIds.Annotations.AllowTypedEquals, context.session) ?: return
         if (!context.languageVersionSettings.supportsFeature(LanguageFeature.CustomEqualsInValueClasses)) {
             reporter.reportOn(
                 annotation.source,

@@ -98,5 +98,4 @@ fun FirSimpleFunction.isEquals(): Boolean {
     return parameter.returnTypeRef.isNullableAny
 }
 
-val FirSimpleFunction.isTypedEquals
-    get() = hasAnnotation(StandardClassIds.Annotations.TypedEquals)
+fun FirSimpleFunction.isTypedEquals(session: FirSession) = hasAnnotation(StandardClassIds.Annotations.TypedEquals, session)

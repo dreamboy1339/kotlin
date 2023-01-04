@@ -26,7 +26,7 @@ import org.jetbrains.kotlin.util.OperatorNameConventions
 object FirTypedEqualsApplicabilityChecker : FirFunctionChecker() {
 
     override fun check(declaration: FirFunction, context: CheckerContext, reporter: DiagnosticReporter) {
-        val typedEqualsAnnotation = declaration.getAnnotationByClassId(StandardClassIds.Annotations.TypedEquals) ?: return
+        val typedEqualsAnnotation = declaration.getAnnotationByClassId(StandardClassIds.Annotations.TypedEquals, context.session) ?: return
         if (!context.languageVersionSettings.supportsFeature(LanguageFeature.CustomEqualsInValueClasses)) {
             reporter.reportOn(
                 typedEqualsAnnotation.source,
@@ -56,7 +56,7 @@ object FirTypedEqualsApplicabilityChecker : FirFunctionChecker() {
             )
             return
         }
-        if (!parentClass.annotations.hasAnnotation(StandardClassIds.Annotations.AllowTypedEquals)) {
+        if (!parentClass.annotations.hasAnnotation(StandardClassIds.Annotations.AllowTypedEquals, context.session)) {
             reporter.reportOn(
                 typedEqualsAnnotation.source,
                 FirErrors.INAPPLICABLE_TYPED_EQUALS_ANNOTATION,

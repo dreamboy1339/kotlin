@@ -216,7 +216,7 @@ class DataClassMembersGenerator(val components: Fir2IrComponents) : Fir2IrCompon
                     components.irBuiltIns.booleanType,
                     otherParameterNeeded = true
                 )
-                val typedEqualsIr = klass.declarations.firstOrNull { it is FirSimpleFunction && it.isTypedEquals }?.let {
+                val typedEqualsIr = klass.declarations.firstOrNull { it is FirSimpleFunction && it.isTypedEquals(session) }?.let {
                     declarationStorage.getOrCreateIrFunction(
                         it as FirSimpleFunction,
                         classifierStorage.getIrClassSymbol(klass.symbol).owner
