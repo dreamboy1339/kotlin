@@ -767,4 +767,92 @@ class KotlinGradleIT : KGPBaseTest() {
             build(":consumer:aggregate")
         }
     }
+
+    @DisplayName("Should pass -Xklib-relative-path-base argument")
+    @GradleTest
+    fun passXKlibRelativePathBase(gradleVersion: GradleVersion) {
+        project(
+            "simpleProject",
+            gradleVersion,
+            buildOptions = defaultBuildOptions.copy(logLevel = LogLevel.DEBUG)
+        ) {
+            gradleProperties.appendText(
+                """
+                |
+                |kotlin.klib.use.relative.path.base=true
+                """.trimMargin()
+            )
+
+            build(":compileKotlin") {
+                val expectedArgument = "-Xklib-relative-path-base=${projectPath.resolve("build").absolutePathString()}," +
+                        "${projectPath.absolutePathString()},${projectPath.absolutePathString()}"
+                assertTaskUsesCompilerArgument(":compileKotlin", expectedArgument)
+            }
+        }
+    }
+
+    @DisplayName("Should not pass -Xklib-relative-path-base argument by default")
+    @GradleTest
+    fun notPassXKlibRelativePathBaseByDefault(gradleVersion: GradleVersion) {
+        project(
+            "simpleProject",
+            gradleVersion,
+            buildOptions = defaultBuildOptions.copy(logLevel = LogLevel.DEBUG)
+        ) {
+            build(":compileKotlin") {
+                val expectedArgument = "-Xklib-relative-path-base=${projectPath.resolve("build").absolutePathString()}," +
+                        "${projectPath.absolutePathString()},${projectPath.absolutePathString()}"
+                assertTaskDoesNotUseCompilerArgument(":compileKotlin", expectedArgument)
+            }
+        }
+    }
+
+    @DisplayName("Should pass -Xklib-relative-path-base for native compilation")
+    @NativeGradlePluginTests
+    @GradleTest
+    fun passXKlibRelativePathBaseNative(gradleVersion: GradleVersion) {
+        nativeProject(
+            "native-binaries/executables",
+            gradleVersion,
+            buildOptions = defaultBuildOptions.copy(logLevel = LogLevel.DEBUG)
+        ) {
+            gradleProperties.appendText(
+                """
+                |
+                |kotlin.klib.use.relative.path.base=true
+                """.trimMargin()
+            )
+
+            build(":compileKotlinHost") {
+                val expectedArgument = "-Xklib-relative-path-base=${projectPath.resolve("build").absolutePathString()}," +
+                        "${projectPath.absolutePathString()},${projectPath.absolutePathString()}"
+                val actualArgument = output.lines().find { it.trim() == expectedArgument }
+                assert(actualArgument != null) {
+                    printBuildOutput()
+                    "Compiler arguments does not contain '$expectedArgument'!"
+                }
+            }
+        }
+    }
+
+    @DisplayName("Should pass -Xklib-relative-path-base for native compilation")
+    @NativeGradlePluginTests
+    @GradleTest
+    fun notPassXKlibRelativePathBaseNativeByDefault(gradleVersion: GradleVersion) {
+        nativeProject(
+            "native-binaries/executables",
+            gradleVersion,
+            buildOptions = defaultBuildOptions.copy(logLevel = LogLevel.DEBUG)
+        ) {
+            build(":compileKotlinHost") {
+                val expectedArgument = "-Xklib-relative-path-base=${projectPath.resolve("build").absolutePathString()}," +
+                        "${projectPath.absolutePathString()},${projectPath.absolutePathString()}"
+                val actualArgument = output.lines().find { it.trim() == expectedArgument }
+                assert(actualArgument == null) {
+                    printBuildOutput()
+                    "Compiler arguments contains '$expectedArgument'!"
+                }
+            }
+        }
+    }
 }

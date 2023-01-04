@@ -47,7 +47,12 @@ internal fun buildKotlinNativeKlibCompilerArgs(
     libraryVersion: String,
     sharedCompilationData: SharedCompilationData?,
     source: FileTree,
-    commonSourcesTree: FileTree
+    commonSourcesTree: FileTree,
+
+    klibUseRelativeBasePath: Boolean,
+    buildDir: File,
+    projectDir: File,
+    rootProjectDir: File,
 ): List<String> = mutableListOf<String>().apply {
     addAll(buildKotlinNativeMainArgs(outFile, optimized, debuggable, target, CompilerOutputKind.LIBRARY, libraries))
 
@@ -61,6 +66,10 @@ internal fun buildKotlinNativeKlibCompilerArgs(
     // Configure FQ module name to avoid cyclic dependencies in klib manifests (see KT-36721).
     addArg("-module-name", moduleName)
     add("-Xshort-module-name=$shortModuleName")
+
+    if (klibUseRelativeBasePath) {
+        add("-Xklib-relative-path-base=${buildDir.absolutePath},${projectDir.absolutePath},${rootProjectDir.absolutePath}")
+    }
 
     val friends = friendModule.files
     if (friends.isNotEmpty()) {

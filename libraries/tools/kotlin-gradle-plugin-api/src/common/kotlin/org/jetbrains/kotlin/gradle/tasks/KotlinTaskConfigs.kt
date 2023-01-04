@@ -74,6 +74,16 @@ interface BaseKotlinCompile : KotlinCompileTool {
 
     @get:Nested
     val pluginOptions: ListProperty<CompilerPluginConfig>
+
+    /**
+     * Enables passing '-Xklib-relative-path-base' compiler flag to compilation.
+     *
+     * This flag tells compiler to use relative paths in generated klib file.
+     *
+     * **NOTE**: currently enabling it will break IDEA and other tools such as LLDB or XCode!
+     */
+    @get:Input
+    val klibUseRelativePathBase: Property<Boolean>
 }
 
 @Suppress("TYPEALIAS_EXPANSION_DEPRECATION")

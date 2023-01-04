@@ -492,7 +492,10 @@ open class KotlinNativeTargetConfigurator<T : KotlinNativeTarget> : AbstractKotl
                         "compilation for target '${compilationInfo.platformType.name}'."
                 it.enabled = konanTarget.enabledOnCurrentHost
 
+                val propertiesProvider = PropertiesProvider(project)
+
                 it.destinationDirectory.set(project.klibOutputDirectory(compilationInfo).resolve("klib"))
+                it.klibUseRelativeBasePath.value(propertiesProvider.kotlinKlibUseRelativePathBase).finalizeValueOnRead()
             }
 
             compilationInfo.classesDirs.from(compileTaskProvider.map { it.outputFile })

@@ -5,7 +5,6 @@
 
 package org.jetbrains.kotlin.gradle.testbase
 
-import org.gradle.api.logging.LogLevel
 import org.gradle.testkit.runner.BuildResult
 
 /**
@@ -190,4 +189,36 @@ fun BuildResult.assertKotlinDaemonJvmOptions(
 
 fun BuildResult.assertBuildReportPathIsPrinted() {
     assertOutputContains("Kotlin build report is written to file://")
+}
+
+/**
+ * Assert given [expectedArgument] compiler argument is passed for [taskPath] compilation.
+ *
+ * @param taskPath should be task path like ':compileKotlin'
+ */
+fun BuildResult.assertTaskUsesCompilerArgument(
+    taskPath: String,
+    expectedArgument: String
+) {
+    val compilerArgs = output.lines().single { it.contains("$taskPath Kotlin compiler args:") }
+    assert(compilerArgs.contains(expectedArgument)) {
+        printBuildOutput()
+        "Compiler arguments does not contain '$expectedArgument' argument: $compilerArgs"
+    }
+}
+
+/**
+ * Assert given [notExpectedArgument] compiler argument is not passed for [taskPath] compilation.
+ *
+ * @param taskPath should be task path like ':compileKotlin'
+ */
+fun BuildResult.assertTaskDoesNotUseCompilerArgument(
+    taskPath: String,
+    notExpectedArgument: String
+) {
+    val compilerArgs = output.lines().single { it.contains("$taskPath Kotlin compiler args:") }
+    assert(!compilerArgs.contains(notExpectedArgument)) {
+        printBuildOutput()
+        "Compiler arguments contains '$notExpectedArgument' argument: $compilerArgs"
+    }
 }

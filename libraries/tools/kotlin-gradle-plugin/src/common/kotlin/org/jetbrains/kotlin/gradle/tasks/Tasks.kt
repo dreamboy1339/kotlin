@@ -254,7 +254,11 @@ abstract class AbstractKotlinCompile<T : CommonCompilerArguments> @Inject constr
         cacheOnlyIfEnabledForKotlin()
     }
 
-    private val layout = project.layout
+    @get:Inject
+    internal abstract val projectLayout: ProjectLayout
+
+    @get:Internal
+    internal abstract val rootProjectDir: Property<File>
 
     @get:Inject
     internal abstract val fileSystemOperations: FileSystemOperations
@@ -408,8 +412,8 @@ abstract class AbstractKotlinCompile<T : CommonCompilerArguments> @Inject constr
                     buildMetrics.measure(BuildTime.BACKUP_OUTPUT) {
                         TaskOutputsBackup(
                             fileSystemOperations,
-                            layout.buildDirectory,
-                            layout.buildDirectory.dir("snapshot/kotlin/$name"),
+                            projectLayout.buildDirectory,
+                            projectLayout.buildDirectory.dir("snapshot/kotlin/$name"),
                             outputsToRestore = allOutputFiles() - taskOutputsBackupExcludes,
                             logger
                         ).also {
@@ -512,6 +516,14 @@ abstract class AbstractKotlinCompile<T : CommonCompilerArguments> @Inject constr
         )
         if (reportingSettings().buildReportMode == BuildReportMode.VERBOSE) {
             args.reportPerf = true
+        }
+
+        if (klibUseRelativePathBase.get()) {
+            args.relativePathBases = arrayOf(
+                projectLayout.buildDirectory.get().asFile.absolutePath,
+                projectLayout.projectDirectory.asFile.absolutePath,
+                rootProjectDir.get().absolutePath
+            )
         }
     }
 }
@@ -712,6 +724,14 @@ abstract class KotlinCompile @Inject constructor(
 
         if (reportingSettings().buildReportMode == BuildReportMode.VERBOSE) {
             args.reportPerf = true
+        }
+
+        if (klibUseRelativePathBase.get()) {
+            args.relativePathBases = arrayOf(
+                projectLayout.buildDirectory.get().asFile.absolutePath,
+                projectLayout.projectDirectory.asFile.absolutePath,
+                rootProjectDir.get().absolutePath
+            )
         }
 
         val localExecutionTimeFreeCompilerArgs = executionTimeFreeCompilerArgs
@@ -1024,13 +1044,22 @@ abstract class Kotlin2JsCompile @Inject constructor(
         }
         if (isIrBackendEnabled()) {
             val outputFilePath: String? = compilerOptions.outputFile.orNull
+            val outputDir: String
             if (outputFilePath != null) {
                 val outputFile = File(outputFilePath)
-                args.outputDir = (if (outputFile.extension == "") outputFile else outputFile.parentFile).normalize().absolutePath
+                outputDir = (if (outputFile.extension == "") outputFile else outputFile.parentFile).normalize().absolutePath
                 args.moduleName = outputFile.nameWithoutExtension
             } else {
-                args.outputDir = destinationDirectory.get().asFile.normalize().absolutePath
+                outputDir = destinationDirectory.get().asFile.normalize().absolutePath
                 args.moduleName = compilerOptions.moduleName.get()
+            }
+
+            args.outputDir = outputDir
+
+            if (klibUseRelativePathBase.get()) {
+                args.relativePathBases = arrayOf(
+                    outputDir,
+                )
             }
         } else {
             args.outputFile = outputFileProperty.get().absoluteFile.normalize().absolutePath

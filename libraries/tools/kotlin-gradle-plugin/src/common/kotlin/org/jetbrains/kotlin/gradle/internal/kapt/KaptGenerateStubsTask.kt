@@ -117,6 +117,12 @@ abstract class KaptGenerateStubsTask @Inject constructor(
             args.reportPerf = true
         }
 
+        args.relativePathBases = arrayOf(
+            projectLayout.buildDirectory.get().asFile.absolutePath,
+            projectLayout.projectDirectory.asFile.absolutePath,
+            rootProjectDir.get().absolutePath
+        )
+
         val pluginOptionsWithKapt = pluginOptions.toSingleCompilerPluginOptions().withWrappedKaptOptions(withApClasspath = kaptClasspath)
         args.pluginOptions = (pluginOptionsWithKapt.arguments).toTypedArray()
 

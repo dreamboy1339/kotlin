@@ -15,6 +15,7 @@ import org.jetbrains.kotlin.gradle.internal.testing.TCServiceMessageOutputStream
 import org.jetbrains.kotlin.gradle.plugin.KotlinJsCompilerType.Companion.jsCompilerProperty
 import org.jetbrains.kotlin.gradle.plugin.PropertiesProvider.PropertyNames.KOTLIN_ABI_SNAPSHOT
 import org.jetbrains.kotlin.gradle.plugin.PropertiesProvider.PropertyNames.KOTLIN_JS_KARMA_BROWSERS
+import org.jetbrains.kotlin.gradle.plugin.PropertiesProvider.PropertyNames.KOTLIN_KLIB_USE_RELATIVE_PATH_BASE
 import org.jetbrains.kotlin.gradle.plugin.PropertiesProvider.PropertyNames.KOTLIN_MPP_ANDROID_GRADLE_PLUGIN_COMPATIBILITY_NO_WARN
 import org.jetbrains.kotlin.gradle.plugin.PropertiesProvider.PropertyNames.KOTLIN_MPP_ANDROID_SOURCE_SET_LAYOUT_ANDROID_STYLE_NO_WARN
 import org.jetbrains.kotlin.gradle.plugin.PropertiesProvider.PropertyNames.KOTLIN_MPP_ANDROID_SOURCE_SET_LAYOUT_VERSION
@@ -483,6 +484,12 @@ internal class PropertiesProvider private constructor(private val project: Proje
     fun jsKarmaBrowsers(target: KotlinTarget? = null): String? =
         target?.name?.prefixIfNot("$KOTLIN_JS_KARMA_BROWSERS.")?.let(::property) ?: property(KOTLIN_JS_KARMA_BROWSERS)
 
+    /**
+     * Controls whether `-Xklib-relative-path-base' compiler option should be added to compilations.
+     */
+    val kotlinKlibUseRelativePathBase: Boolean
+        get() = booleanProperty(KOTLIN_KLIB_USE_RELATIVE_PATH_BASE) ?: false
+
     private fun propertyWithDeprecatedVariant(propName: String, deprecatedPropName: String): String? {
         val deprecatedProperty = this.property(deprecatedPropName)
         if (deprecatedProperty != null) {
@@ -548,6 +555,7 @@ internal class PropertiesProvider private constructor(private val project: Proje
         const val KOTLIN_BUILD_REPORT_SINGLE_FILE = "kotlin.build.report.single_file"
         const val KOTLIN_BUILD_REPORT_HTTP_URL = "kotlin.build.report.http.url"
         const val KOTLIN_OPTIONS_SUPPRESS_FREEARGS_MODIFICATION_WARNING = "kotlin.options.suppressFreeCompilerArgsModificationWarning"
+        const val KOTLIN_KLIB_USE_RELATIVE_PATH_BASE = "kotlin.klib.use.relative.path.base"
     }
 
     companion object {
