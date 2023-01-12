@@ -49,19 +49,11 @@ TaskProvider<DokkaTask> createStdLibVersionedDocTask(String version, Boolean isL
     return tasks.register("kotlin-stdlib_" + version + (isLatest ? "_latest" : ""), DokkaTask) {
         dependsOn(prepare)
 
-        def kotlin_libs = pKotlinBig().kotlin_libs
-        def kotlin_native_root = pKotlinNative().kotlin_native_root
-        def kotlin_native_libs = pKotlinNative().kotlin_native_libs
-
         def kotlin_stdlib_dir = "$kotlin_root/libraries/stdlib"
 
         def stdlibIncludeMd = "$kotlin_root/libraries/stdlib/src/Module.md"
         def stdlibSamples = "$kotlin_root/libraries/stdlib/samples/test"
 
-        def stdlibCommonClasspath = fileTree("$kotlin_libs/kotlin-stdlib-common/")
-        def stdlibJvmClasspath = fileTree("$kotlin_libs/kotlin-stdlib/") + fileTree("$kotlin_libs/kotlin-stdlib-jdk7") + fileTree("$kotlin_libs/kotlin-stdlib-jdk8/") //, "$kotlin_root/core/reflection.jvm/src".toString()]
-        def stdlibNativeClasspath = ["$kotlin_native_libs/klib/common/stdlib".toString()]
-        def stdlibJsClasspath = fileTree("$kotlin_libs/kotlin-stdlib-js/")
         def suppressedPackages = [
                 "kotlin.internal",
                 "kotlin.jvm.internal",
@@ -96,7 +88,6 @@ TaskProvider<DokkaTask> createStdLibVersionedDocTask(String version, Boolean isL
                     jdkVersion.set(8)
                     platform.set(Platform.common)
                     noJdkLink.set(true)
-                    classpath.setFrom(stdlibCommonClasspath)
 
                     displayName.set("Common")
                     sourceRoots.from("$kotlin_root/core/builtins/native")
@@ -111,7 +102,6 @@ TaskProvider<DokkaTask> createStdLibVersionedDocTask(String version, Boolean isL
             register("kotlin-stdlib-java-common") {
                 jdkVersion.set(8)
                 platform.set(Platform.jvm)
-                classpath.setFrom(stdlibJvmClasspath)
 
                 displayName.set("JVM")
                 if (version != "1.0" && version != "1.1") {
@@ -142,7 +132,6 @@ TaskProvider<DokkaTask> createStdLibVersionedDocTask(String version, Boolean isL
             register("kotlin-stdlib-jdk8") {
                 jdkVersion.set(8)
                 platform.set(Platform.jvm)
-                classpath.setFrom(stdlibJvmClasspath)
 
                 displayName.set("JRE8")
                 dependsOn("kotlin-stdlib-java-common")
@@ -154,8 +143,6 @@ TaskProvider<DokkaTask> createStdLibVersionedDocTask(String version, Boolean isL
             register("kotlin-stdlib-jdk7") {
                 jdkVersion.set(8)
                 platform.set(Platform.jvm)
-                classpath.setFrom(stdlibJvmClasspath)
-
 
                 displayName.set("JRE7")
                 dependsOn("kotlin-stdlib-java-common")
@@ -169,7 +156,6 @@ TaskProvider<DokkaTask> createStdLibVersionedDocTask(String version, Boolean isL
                     jdkVersion.set(8)
                     platform.set(Platform.js)
                     noJdkLink.set(true)
-                    classpath.setFrom(stdlibJsClasspath)
 
                     displayName.set("JS")
                     if (version != "1.0" && version != "1.1") {
@@ -205,7 +191,6 @@ TaskProvider<DokkaTask> createStdLibVersionedDocTask(String version, Boolean isL
                     jdkVersion.set(8)
                     platform.set(Platform.native)
                     noJdkLink.set(true)
-                    classpath.setFrom(stdlibNativeClasspath)
 
                     displayName.set("Native")
                     dependsOn("kotlin-stdlib-common")
