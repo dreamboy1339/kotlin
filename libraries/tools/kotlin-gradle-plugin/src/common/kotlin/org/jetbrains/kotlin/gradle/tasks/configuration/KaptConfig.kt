@@ -125,7 +125,7 @@ internal open class KaptConfig<TASK : KaptTask>(
                 if ("-source" in result || "--source" in result || "--release" in result) return@also
 
                 if (defaultJavaSourceCompatibility.isPresent) {
-                    val atLeast12Java = SystemInfo.isJavaVersionAtLeast(12, 0, 0)
+                    val atLeast12Java = JavaVersion.current().compareTo(JavaVersion.compose(12, 0, 0, 0, false)) >= 0
                     val sourceOptionKey = if (atLeast12Java) {
                         "--source"
                     } else {
