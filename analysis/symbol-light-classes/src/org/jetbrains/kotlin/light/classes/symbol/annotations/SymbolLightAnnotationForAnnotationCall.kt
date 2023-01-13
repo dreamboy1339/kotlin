@@ -12,10 +12,10 @@ import org.jetbrains.kotlin.asJava.classes.lazyPub
 import org.jetbrains.kotlin.light.classes.symbol.basicIsEquivalentTo
 import org.jetbrains.kotlin.psi.KtCallElement
 
-internal class SymbolLightAnnotationForAnnotationCall(
+internal class SymbolLightAnnotationForAnnotationCall<T>(
     private val annotationCall: KtAnnotationApplication,
-    parent: PsiModifierList,
-) : SymbolLightAbstractAnnotation(parent) {
+    parent: T,
+) : SymbolLightAbstractAnnotation(parent) where T : PsiElement, T : PsiAnnotationOwner {
 
     override fun findAttributeValue(attributeName: String?): PsiAnnotationMemberValue? =
         PsiImplUtil.findAttributeValue(this, attributeName)
@@ -37,7 +37,7 @@ internal class SymbolLightAnnotationForAnnotationCall(
 
     override fun equals(other: Any?): Boolean =
         this === other ||
-                (other is SymbolLightAnnotationForAnnotationCall &&
+                (other is SymbolLightAnnotationForAnnotationCall<*> &&
                         kotlinOrigin == other.kotlinOrigin &&
                         annotationCall == other.annotationCall)
 

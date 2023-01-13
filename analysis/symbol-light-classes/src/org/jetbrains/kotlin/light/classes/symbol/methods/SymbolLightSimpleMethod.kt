@@ -17,6 +17,7 @@ import org.jetbrains.kotlin.asJava.builder.LightMemberOrigin
 import org.jetbrains.kotlin.asJava.classes.lazyPub
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.light.classes.symbol.*
+import org.jetbrains.kotlin.light.classes.symbol.annotations.annotateByKtType
 import org.jetbrains.kotlin.light.classes.symbol.annotations.computeAnnotations
 import org.jetbrains.kotlin.light.classes.symbol.annotations.hasInlineOnlyAnnotation
 import org.jetbrains.kotlin.light.classes.symbol.annotations.hasJvmStaticAnnotation
@@ -183,12 +184,14 @@ internal class SymbolLightSimpleMethod(
                 functionSymbol.returnType.takeUnless { it.isVoidType } ?: return@withFunctionSymbol PsiType.VOID
             }
 
-            ktType.asPsiType(
+            ktType.asPsiTypeElement(
                 this@SymbolLightSimpleMethod,
                 allowErrorTypes = true,
                 KtTypeMappingMode.RETURN_TYPE,
                 containingClass.isAnnotationType,
-            )
+            )?.let {
+                annotateByKtType(it.type, ktType, it)
+            }
         } ?: nonExistentType()
     }
 

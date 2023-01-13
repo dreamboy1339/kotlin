@@ -18,6 +18,7 @@ import org.jetbrains.kotlin.asJava.classes.lazyPub
 import org.jetbrains.kotlin.codegen.AsmUtil
 import org.jetbrains.kotlin.light.classes.symbol.*
 import org.jetbrains.kotlin.light.classes.symbol.annotations.SymbolLightAnnotationForAnnotationCall
+import org.jetbrains.kotlin.light.classes.symbol.annotations.annotateByKtType
 import org.jetbrains.kotlin.light.classes.symbol.annotations.computeNullabilityAnnotation
 import org.jetbrains.kotlin.light.classes.symbol.methods.SymbolLightMethodBase
 import org.jetbrains.kotlin.light.classes.symbol.modifierLists.SymbolLightClassModifierList
@@ -85,7 +86,10 @@ internal class SymbolLightParameterForReceiver private constructor(
 
     private val _type: PsiType by lazyPub {
         withReceiverSymbol { receiver ->
-            receiver.type.asPsiType(this, allowErrorTypes = true)
+            val ktType = receiver.type
+            ktType.asPsiTypeElement(this, allowErrorTypes = true)?.let {
+                annotateByKtType(it.type, ktType, it)
+            }
         } ?: nonExistentType()
     }
 

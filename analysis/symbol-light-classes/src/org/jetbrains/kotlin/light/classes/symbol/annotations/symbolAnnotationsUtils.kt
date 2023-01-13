@@ -16,7 +16,10 @@ import org.jetbrains.kotlin.analysis.api.components.buildClassType
 import org.jetbrains.kotlin.analysis.api.symbols.KtFunctionSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KtNamedClassOrObjectSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.markers.KtAnnotatedSymbol
+import org.jetbrains.kotlin.analysis.api.types.KtNonErrorClassType
+import org.jetbrains.kotlin.analysis.api.types.KtType
 import org.jetbrains.kotlin.analysis.api.types.KtTypeMappingMode
+import org.jetbrains.kotlin.asJava.classes.annotateByTypeAnnotationProvider
 import org.jetbrains.kotlin.builtins.StandardNames
 import org.jetbrains.kotlin.builtins.StandardNames.DEFAULT_VALUE_PARAMETER
 import org.jetbrains.kotlin.descriptors.annotations.AnnotationUseSiteTarget
@@ -321,4 +324,24 @@ internal fun KtAnnotatedSymbol.computeThrowsList(
     }
 
     annoApp.arguments.forEach { handleAnnotationValue(it.expression) }
+}
+
+context(KtAnalysisSession)
+internal fun annotateByKtType(
+    psiType: PsiType,
+    ktType: KtType,
+    psiContext: PsiTypeElement,
+): PsiType {
+
+    fun KtType.getAnnotationsSequence(): Sequence<List<PsiAnnotation>> =
+        sequence {
+            yield(annotations.map { SymbolLightAnnotationForAnnotationCall(it, psiContext) })
+            (this@getAnnotationsSequence as? KtNonErrorClassType)?.ownTypeArguments?.forEach { typeProjection ->
+                typeProjection.type?.let {
+                    yieldAll(it.getAnnotationsSequence())
+                }
+            }
+        }
+
+    return psiType.annotateByTypeAnnotationProvider(ktType.getAnnotationsSequence())
 }
