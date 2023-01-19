@@ -39,6 +39,7 @@ object FirNativeSessionFactory : FirAbstractSessionFactory() {
             createProviders = { session, builtinsModuleData, kotlinScopeProvider ->
                 listOf(
                     KlibBasedSymbolProvider(session, moduleDataProvider, kotlinScopeProvider, resolvedLibraries),
+                    NativeForwardDeclarationsSymbolProvider(session, moduleDataProvider, kotlinScopeProvider, resolvedLibraries),
                     FirBuiltinSymbolProvider(session, builtinsModuleData, kotlinScopeProvider),
                     FirCloneableSymbolProvider(session, builtinsModuleData, kotlinScopeProvider),
                 )
