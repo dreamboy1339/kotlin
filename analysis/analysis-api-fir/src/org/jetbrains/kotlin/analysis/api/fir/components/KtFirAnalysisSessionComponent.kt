@@ -8,8 +8,8 @@ package org.jetbrains.kotlin.analysis.api.fir.components
 import com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.analysis.api.KtStarTypeProjection
-import org.jetbrains.kotlin.analysis.api.KtTypeProjection
 import org.jetbrains.kotlin.analysis.api.KtTypeArgumentWithVariance
+import org.jetbrains.kotlin.analysis.api.KtTypeProjection
 import org.jetbrains.kotlin.analysis.api.diagnostics.KtDiagnosticWithPsi
 import org.jetbrains.kotlin.analysis.api.fir.KtFirAnalysisSession
 import org.jetbrains.kotlin.analysis.api.fir.diagnostics.KT_DIAGNOSTIC_CONVERTER
@@ -79,26 +79,33 @@ internal interface KtFirAnalysisSessionComponent {
         )
     }
 
-    fun FirQualifiedAccess.createSubstitutorFromTypeArguments(): KtSubstitutor? {
-        return createConeSubstitutorFromTypeArguments()?.toKtSubstitutor()
+    fun FirQualifiedAccess.createSubstitutorFromTypeArguments(discardErrorTypes: Boolean = false): KtSubstitutor? {
+        return createConeSubstitutorFromTypeArguments(discardErrorTypes)?.toKtSubstitutor()
     }
 
-    fun FirQualifiedAccess.createSubstitutorFromTypeArguments(callableSymbol: FirCallableSymbol<*>): KtSubstitutor {
-        return createConeSubstitutorFromTypeArguments(callableSymbol).toKtSubstitutor()
+    fun FirQualifiedAccess.createSubstitutorFromTypeArguments(
+        callableSymbol: FirCallableSymbol<*>,
+        discardErrorTypes: Boolean = false
+    ): KtSubstitutor {
+        return createConeSubstitutorFromTypeArguments(callableSymbol, discardErrorTypes).toKtSubstitutor()
     }
 
-    fun FirQualifiedAccess.createConeSubstitutorFromTypeArguments(): ConeSubstitutor? {
+    fun FirQualifiedAccess.createConeSubstitutorFromTypeArguments(discardErrorTypes: Boolean = false): ConeSubstitutor? {
         val symbol = calleeReference.toResolvedCallableSymbol() ?: return null
-        return createConeSubstitutorFromTypeArguments(symbol)
+        return createConeSubstitutorFromTypeArguments(symbol, discardErrorTypes)
     }
 
-    fun FirQualifiedAccess.createConeSubstitutorFromTypeArguments(callableSymbol: FirCallableSymbol<*>): ConeSubstitutor {
+    fun FirQualifiedAccess.createConeSubstitutorFromTypeArguments(
+        callableSymbol: FirCallableSymbol<*>,
+        discardErrorTypes: Boolean = false
+    ): ConeSubstitutor {
         val typeArgumentMap = buildMap {
             // Type arguments are ignored defensively if `callableSymbol` can't provide enough type parameters (and vice versa). For
             // example, when call candidates are collected, the candidate's `callableSymbol` might have fewer type parameters than the
             // inferred call's type arguments.
             typeArguments.zip(callableSymbol.typeParameterSymbols).forEach { (typeArgument, typeParameterSymbol) ->
                 val type = typeArgument.safeAs<FirTypeProjectionWithVariance>()?.typeRef?.coneType ?: return@forEach
+                if (type is ConeErrorType && discardErrorTypes) return@forEach
                 put(typeParameterSymbol, type)
             }
         }
