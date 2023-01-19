@@ -11,7 +11,7 @@ package kotlin
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.SOURCE)
 @MustBeDocumented
-annotation class TypedEquals
+public annotation class TypedEquals
 
 /**
  * This annotation allows use @TypedEquals annotations inside given class declaration
@@ -24,4 +24,4 @@ annotation class TypedEquals
 @Retention(AnnotationRetention.BINARY)
 @MustBeDocumented
 @RequiresOptIn
-annotation class AllowTypedEquals
+public annotation class AllowTypedEquals
