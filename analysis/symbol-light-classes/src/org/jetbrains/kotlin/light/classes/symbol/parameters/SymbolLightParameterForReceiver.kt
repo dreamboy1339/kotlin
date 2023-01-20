@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.light.classes.symbol.parameters
 
+import com.intellij.lang.jvm.types.JvmPrimitiveType
 import com.intellij.psi.PsiIdentifier
 import com.intellij.psi.PsiModifierList
 import com.intellij.psi.PsiType
@@ -74,7 +75,9 @@ internal class SymbolLightParameterForReceiver private constructor(
         ) { modifierList ->
             withReceiverSymbol { receiver ->
                 buildList {
-                    receiver.type.nullabilityType.computeNullabilityAnnotation(modifierList)?.let(::add)
+                    if (_type !is JvmPrimitiveType) {
+                        receiver.type.nullabilityType.computeNullabilityAnnotation(modifierList)?.let(::add)
+                    }
                     receiver.annotations.mapTo(this) {
                         SymbolLightAnnotationForAnnotationCall(it, modifierList)
                     }
