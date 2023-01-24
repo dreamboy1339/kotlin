@@ -152,7 +152,6 @@ internal class KtFirCallResolver(
         if (this is FirResolvedQualifier) {
             val callExpression = psi as? KtCallExpression
                 ?: (psi as? KtDotQualifiedExpression)?.selectorExpression as? KtCallExpression
-                ?: (psi as? KtSafeQualifiedExpression)?.selectorExpression as? KtCallExpression
             if (callExpression != null) {
                 val constructors = findQualifierConstructors()
                 val calls = toKtCalls(constructors)
