@@ -45,6 +45,7 @@ import org.jetbrains.kotlin.light.classes.symbol.fields.SymbolLightFieldForPrope
 import org.jetbrains.kotlin.light.classes.symbol.isConst
 import org.jetbrains.kotlin.light.classes.symbol.isLateInit
 import org.jetbrains.kotlin.light.classes.symbol.mapType
+import org.jetbrains.kotlin.light.classes.symbol.methods.*
 import org.jetbrains.kotlin.light.classes.symbol.methods.SymbolLightAccessorMethod
 import org.jetbrains.kotlin.light.classes.symbol.methods.SymbolLightConstructor
 import org.jetbrains.kotlin.light.classes.symbol.methods.SymbolLightNoArgConstructor
@@ -289,6 +290,26 @@ internal fun SymbolLightClassBase.createPropertyAccessors(
 
     if (declaration.getter?.hasBody != true && declaration.setter?.hasBody != true && declaration.visibility.isPrivateOrPrivateToThis()) return
 
+    val originalElement = declaration.sourcePsiSafe<KtDeclaration>()
+
+    if (!this@createPropertyAccessors.isAnnotationType) {
+        val lightMemberOrigin = originalElement?.let {
+            LightMemberOriginForDeclaration(
+                originalElement = it,
+                originKind = JvmDeclarationOriginKind.OTHER,
+            )
+        }
+        val method = SymbolLightAnnotationsMethod(
+            ktAnalysisSession = this@KtAnalysisSession,
+            containingPropertySymbol = declaration,
+            lightMemberOrigin = lightMemberOrigin,
+            containingClass = this@createPropertyAccessors
+        )
+        if (method.annotations.isNotEmpty()) {
+            result.add(method)
+        }
+    }
+
     if (declaration.hasJvmFieldAnnotation()) return
     val propertyTypeIsValueClass = declaration.returnType.typeForValueClass
     /*
@@ -321,8 +342,6 @@ internal fun SymbolLightClassBase.createPropertyAccessors(
         if (declaration.isHiddenOrSynthetic(siteTarget)) return false
         return !isHiddenOrSynthetic(siteTarget, acceptAnnotationsWithoutUseSite = true)
     }
-
-    val originalElement = declaration.sourcePsiSafe<KtDeclaration>()
 
     val getter = declaration.getter?.takeIf {
         it.needToCreateAccessor(AnnotationUseSiteTarget.PROPERTY_GETTER)
