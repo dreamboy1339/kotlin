@@ -116,6 +116,7 @@ data class CompanionObjectDescription(
 data class MethodSignature(
     var isExternal: Boolean = false,
     val visibility: String = "public",
+    var isInfix: Boolean = false,
     var isOverride: Boolean = false,
     var isInline: Boolean = false,
     var isOperator: Boolean = true,
@@ -125,6 +126,7 @@ data class MethodSignature(
         return buildString {
             if (isExternal) append("external ")
             append("$visibility ")
+            if (isInfix) append("infix ")
             if (isOverride) append("override ")
             if (isInline) append("inline ")
             if (isOperator) append("operator ")
@@ -208,9 +210,9 @@ abstract class BaseGenerator {
                 else -> throw IllegalArgumentException("Bit shift operation is not implemented for $kind")
             }
             return """ 
-                * Note that only the $bitsUsed lowest-order bits of the [bitCount] are used as the shift distance.
-                * The shift distance actually used is therefore always in the range `0..${kind.bitSize - 1}`.
-                """
+                Note that only the $bitsUsed lowest-order bits of the [bitCount] are used as the shift distance.
+                The shift distance actually used is therefore always in the range `0..${kind.bitSize - 1}`.
+                """.trimIndent()
         }
 
         internal fun incDecOperatorsDoc(name: String): String {
@@ -244,6 +246,115 @@ abstract class BaseGenerator {
             }
             else -> error("No documentation for operator $operator")
         }
+
+        private fun compareByDomainCapacity(type1: PrimitiveType, type2: PrimitiveType): Int {
+            return if (type1.isIntegral && type2.isIntegral) type1.byteSize - type2.byteSize else type1.ordinal - type2.ordinal
+        }
+
+        private fun docForConversionFromFloatingToIntegral(fromFloating: PrimitiveType, toIntegral: PrimitiveType): String {
+            require(fromFloating.isFloatingPoint)
+            require(toIntegral.isIntegral)
+
+            val thisName = fromFloating.capitalized
+            val otherName = toIntegral.capitalized
+
+            return if (compareByDomainCapacity(toIntegral, PrimitiveType.INT) < 0) {
+                """
+             The resulting `$otherName` value is equal to `this.toInt().to$otherName()`.
+            """.trimIndent()
+            } else {
+                """
+             The fractional part, if any, is rounded down towards zero.
+             Returns zero if this `$thisName` value is `NaN`, [$otherName.MIN_VALUE] if it's less than `$otherName.MIN_VALUE`,
+             [$otherName.MAX_VALUE] if it's bigger than `$otherName.MAX_VALUE`.
+            """.trimIndent()
+            }
+        }
+
+        private fun docForConversionFromFloatingToFloating(fromFloating: PrimitiveType, toFloating: PrimitiveType): String {
+            require(fromFloating.isFloatingPoint)
+            require(toFloating.isFloatingPoint)
+
+            val thisName = fromFloating.capitalized
+            val otherName = toFloating.capitalized
+
+            return if (compareByDomainCapacity(toFloating, fromFloating) < 0) {
+                """
+             The resulting value is the closest `$otherName` to this `$thisName` value.
+             In case when this `$thisName` value is exactly between two `$otherName`s,
+             the one with zero at least significant bit of mantissa is selected.
+            """.trimIndent()
+            } else {
+                """
+             The resulting `$otherName` value represents the same numerical value as this `$thisName`.
+            """.trimIndent()
+            }
+        }
+
+        private fun docForConversionFromIntegralToIntegral(fromIntegral: PrimitiveType, toIntegral: PrimitiveType): String {
+            require(fromIntegral.isIntegral)
+            require(toIntegral.isIntegral)
+
+            val thisName = fromIntegral.capitalized
+            val otherName = toIntegral.capitalized
+
+            return if (toIntegral == PrimitiveType.CHAR) {
+                if (fromIntegral == PrimitiveType.SHORT) {
+                    """
+                The resulting `Char` code is equal to this value reinterpreted as an unsigned number,
+                i.e. it has the same binary representation as this `Short`.
+                """.trimIndent()
+                } else if (fromIntegral == PrimitiveType.BYTE) {
+                    """
+                If this value is non-negative, the resulting `Char` code is equal to this value.
+                
+                The least significant 8 bits of the resulting `Char` code are the same as the bits of this `Byte` value,
+                whereas the most significant 8 bits are filled with the sign bit of this value.
+                """.trimIndent()
+                } else {
+                    """
+                If this value is in the range of `Char` codes `Char.MIN_VALUE..Char.MAX_VALUE`,
+                the resulting `Char` code is equal to this value.
+                
+                The resulting `Char` code is represented by the least significant 16 bits of this `$thisName` value.
+                """.trimIndent()
+                }
+            } else if (compareByDomainCapacity(toIntegral, fromIntegral) < 0) {
+                """
+             If this value is in [$otherName.MIN_VALUE]..[$otherName.MAX_VALUE], the resulting `$otherName` value represents
+             the same numerical value as this `$thisName`.
+             
+             The resulting `$otherName` value is represented by the least significant ${toIntegral.bitSize} bits of this `$thisName` value.
+            """.trimIndent()
+            } else {
+                """
+             The resulting `$otherName` value represents the same numerical value as this `$thisName`.
+             
+             The least significant ${fromIntegral.bitSize} bits of the resulting `$otherName` value are the same as the bits of this `$thisName` value,
+             whereas the most significant ${toIntegral.bitSize - fromIntegral.bitSize} bits are filled with the sign bit of this value.
+            """.trimIndent()
+            }
+        }
+
+        private fun docForConversionFromIntegralToFloating(fromIntegral: PrimitiveType, toFloating: PrimitiveType): String {
+            require(fromIntegral.isIntegral)
+            require(toFloating.isFloatingPoint)
+
+            val thisName = fromIntegral.capitalized
+            val otherName = toFloating.capitalized
+
+            return if (fromIntegral == PrimitiveType.LONG || fromIntegral == PrimitiveType.INT && toFloating == PrimitiveType.FLOAT) {
+                """
+             The resulting value is the closest `$otherName` to this `$thisName` value.
+             In case when this `$thisName` value is exactly between two `$otherName`s,
+             the one with zero at least significant bit of mantissa is selected.
+            """.trimIndent()
+            } else {
+                """
+             The resulting `$otherName` value represents the same numerical value as this `$thisName`.
+            """.trimIndent()
+            }
+        }
     }
 
     private val typeDescriptions: Map<PrimitiveType, String> = mapOf(
@@ -272,13 +383,13 @@ abstract class BaseGenerator {
 
     private fun generateClasses(): List<ClassDescription> {
         return buildList {
-            for (kind in PrimitiveType.onlyNumeric) {
-                val className = kind.capitalized
-                val doc = generateDoc(kind)
+            for (thisKind in PrimitiveType.onlyNumeric) {
+                val className = thisKind.capitalized
+                val doc = generateDoc(thisKind)
 
                 val properties = buildList {
-                    if (kind == PrimitiveType.FLOAT || kind == PrimitiveType.DOUBLE) {
-                        val (minValue, maxValue, posInf, negInf, nan) = primitiveConstants(kind)
+                    if (thisKind == PrimitiveType.FLOAT || thisKind == PrimitiveType.DOUBLE) {
+                        val (minValue, maxValue, posInf, negInf, nan) = primitiveConstants(thisKind)
                         this += PropertyDescription(
                             doc = "A constant holding the smallest *positive* nonzero value of $className.",
                             name = "MIN_VALUE",
@@ -315,8 +426,8 @@ abstract class BaseGenerator {
                         )
                     }
 
-                    if (kind == PrimitiveType.INT || kind == PrimitiveType.LONG || kind == PrimitiveType.SHORT || kind == PrimitiveType.BYTE) {
-                        val (minValue, maxValue) = primitiveConstants(kind)
+                    if (thisKind == PrimitiveType.INT || thisKind == PrimitiveType.LONG || thisKind == PrimitiveType.SHORT || thisKind == PrimitiveType.BYTE) {
+                        val (minValue, maxValue) = primitiveConstants(thisKind)
                         this += PropertyDescription(
                             doc = "A constant holding the minimum value an instance of $className can have.",
                             name = "MIN_VALUE",
@@ -332,13 +443,13 @@ abstract class BaseGenerator {
                         )
                     }
 
-                    val sizeSince = if (kind.isFloatingPoint) "1.4" else "1.3"
+                    val sizeSince = if (thisKind.isFloatingPoint) "1.4" else "1.3"
                     this += PropertyDescription(
                         doc = "The number of bytes used to represent an instance of $className in a binary form.",
                         listOf("SinceKotlin(\"$sizeSince\")"),
                         name = "SIZE_BYTES",
                         type = "Int",
-                        value = kind.byteSize.toString()
+                        value = thisKind.byteSize.toString()
                     )
 
                     this += PropertyDescription(
@@ -346,29 +457,29 @@ abstract class BaseGenerator {
                         listOf("SinceKotlin(\"$sizeSince\")"),
                         name = "SIZE_BITS",
                         type = "Int",
-                        value = kind.bitSize.toString()
+                        value = thisKind.bitSize.toString()
                     )
                 }
 
                 val methods = buildList {
-                    this.addAll(generateCompareTo(kind))
-                    this.addAll(generateBinaryOperators(kind))
-                    this.addAll(generateUnaryOperators(kind))
+                    this.addAll(generateCompareTo(thisKind))
+                    this.addAll(generateBinaryOperators(thisKind))
+                    this.addAll(generateUnaryOperators(thisKind))
+                    this.addAll(generateRangeTo(thisKind))
+                    this.addAll(generateRangeUntil(thisKind))
+
+                    if (thisKind == PrimitiveType.INT || thisKind == PrimitiveType.LONG) {
+                        this.addAll(generateBitShiftOperators(thisKind))
+                    }
+
+                    if (thisKind == PrimitiveType.INT || thisKind == PrimitiveType.LONG) {
+                        this.addAll(generateBitwiseOperators(thisKind))
+                    }
+
+                    this.addAll(generateConversions(thisKind))
+//                    this += generateEquals()
+//                    this += generateToString()
                 }
-
-//                generateRangeTo(kind)
-//                generateRangeUntil(kind)
-
-//            if (kind == PrimitiveType.INT || kind == PrimitiveType.LONG) {
-//                generateBitShiftOperators(kind)
-//            }
-//            if (kind == PrimitiveType.INT || kind == PrimitiveType.LONG /* || kind == PrimitiveType.BYTE || kind == PrimitiveType.SHORT */) {
-//                generateBitwiseOperators(className, since = if (kind == PrimitiveType.BYTE || kind == PrimitiveType.SHORT) "1.1" else null)
-//            }
-//
-//            generateConversions(kind)
-//            generateEquals()
-//            generateToString()
 
                 this += ClassDescription(
                     doc,
@@ -376,16 +487,16 @@ abstract class BaseGenerator {
                     name = className,
                     companionObject = CompanionObjectDescription(properties = properties),
                     methods = methods
-                ).apply { this.modifyGeneratedClass(kind) }
+                ).apply { this.modifyGeneratedClass(thisKind) }
             }
         }
     }
 
-    private fun generateDoc(kind: PrimitiveType): String {
-        return "Represents a ${typeDescriptions[kind]}."
+    private fun generateDoc(thisKind: PrimitiveType): String {
+        return "Represents a ${typeDescriptions[thisKind]}."
     }
 
-    private fun generateCompareTo(kind: PrimitiveType): List<MethodDescription> {
+    private fun generateCompareTo(thisKind: PrimitiveType): List<MethodDescription> {
         return buildList {
             for (otherKind in PrimitiveType.onlyNumeric) {
                 val doc =
@@ -394,7 +505,8 @@ abstract class BaseGenerator {
                             "or a positive number if it's greater than other."
 
                 val signature = MethodSignature(
-                    isOverride = otherKind == kind,
+                    isOverride = otherKind == thisKind,
+                    isOperator = true,
                     name = "compareTo",
                     arg = MethodParameter("other", otherKind),
                     returnType = "Int"
@@ -404,7 +516,7 @@ abstract class BaseGenerator {
                     doc = doc,
                     annotations = mutableListOf("kotlin.internal.IntrinsicConstEvaluation"),
                     signature = signature
-                ).apply { this.modifyGeneratedCompareTo(kind, otherKind) }
+                ).apply { this.modifyGeneratedCompareTo(thisKind, otherKind) }
             }
         }
     }
@@ -431,6 +543,7 @@ abstract class BaseGenerator {
                     doc = binaryOperatorDoc(name, thisKind, otherKind),
                     annotations = annotations.toMutableList(),
                     signature = MethodSignature(
+                        isOperator = true,
                         name = name,
                         arg = MethodParameter("other", otherKind),
                         returnType = returnType.capitalized
@@ -440,35 +553,225 @@ abstract class BaseGenerator {
         }
     }
 
-    private fun generateUnaryOperators(kind: PrimitiveType): List<MethodDescription> {
+    private fun generateUnaryOperators(thisKind: PrimitiveType): List<MethodDescription> {
         return buildList {
             for (name in listOf("inc", "dec")) {
                 this += MethodDescription(
                     doc = incDecOperatorsDoc(name),
-                    signature = MethodSignature(name = name, arg = null, returnType = kind.capitalized)
-                ).apply { this.modifyGeneratedUnaryOperation(kind) }
+                    signature = MethodSignature(isOperator = true, name = name, arg = null, returnType = thisKind.capitalized)
+                ).apply { this.modifyGeneratedUnaryOperation(thisKind) }
             }
 
             for ((name, doc) in unaryPlusMinusOperators) {
-                val returnType = if (kind in listOf(PrimitiveType.SHORT, PrimitiveType.BYTE, PrimitiveType.CHAR)) "Int" else kind.capitalized
+                val returnType = if (thisKind in listOf(PrimitiveType.SHORT, PrimitiveType.BYTE, PrimitiveType.CHAR)) "Int" else thisKind.capitalized
                 this += MethodDescription(
                     doc = doc,
                     annotations = mutableListOf("kotlin.internal.IntrinsicConstEvaluation"),
-                    signature = MethodSignature(name = name, arg = null, returnType = returnType)
-                ).apply { this.modifyGeneratedUnaryOperation(kind) }
+                    signature = MethodSignature(isOperator = true, name = name, arg = null, returnType = returnType)
+                ).apply { this.modifyGeneratedUnaryOperation(thisKind) }
             }
         }
     }
 
-    fun generateRangeTo(kind: PrimitiveType) {}
-    fun generateRangeUntil(kind: PrimitiveType) {}
+    private fun generateRangeTo(thisKind: PrimitiveType): List<MethodDescription> {
+        return buildList {
+            for (otherKind in PrimitiveType.onlyNumeric) {
+                val returnType = maxByDomainCapacity(
+                    maxByDomainCapacity(thisKind, otherKind),
+                    PrimitiveType.INT
+                )
+
+                if (returnType == PrimitiveType.DOUBLE || returnType == PrimitiveType.FLOAT) {
+                    continue
+                }
+
+                this += MethodDescription(
+                    doc = "Creates a range from this value to the specified [other] value.",
+                    signature = MethodSignature(
+                        isOperator = true,
+                        name = "rangeTo",
+                        arg = MethodParameter("other", otherKind),
+                        returnType = "${returnType.capitalized}Range"
+                    )
+                ).apply { this.modifyGeneratedRangeTo(thisKind) }
+            }
+        }
+    }
+
+    private fun generateRangeUntil(thisKind: PrimitiveType): List<MethodDescription> {
+        return buildList {
+            for (otherKind in PrimitiveType.onlyNumeric) {
+                val returnType = maxByDomainCapacity(
+                    maxByDomainCapacity(thisKind, otherKind),
+                    PrimitiveType.INT
+                )
+
+                if (returnType == PrimitiveType.DOUBLE || returnType == PrimitiveType.FLOAT) {
+                    continue
+                }
+
+                this += MethodDescription(
+                    doc = """
+                        Creates a range from this value up to but excluding the specified [other] value.
+                        
+                        If the [other] value is less than or equal to `this` value, then the returned range is empty.
+                    """.trimIndent(),
+                    annotations = mutableListOf("SinceKotlin(\"1.7\")", "ExperimentalStdlibApi"),
+                    signature = MethodSignature(
+                        isOperator = true,
+                        name = "rangeUntil",
+                        arg = MethodParameter("other", otherKind),
+                        returnType = "${returnType.capitalized}Range"
+                    )
+                ).apply { this.modifyGeneratedRangeUntil(thisKind) }
+            }
+        }
+    }
+
+    private fun generateBitShiftOperators(thisKind: PrimitiveType): List<MethodDescription> {
+        return buildList {
+            val className = thisKind.capitalized
+            val detail = shiftOperatorsDocDetail(thisKind)
+            for ((name, doc) in shiftOperators) {
+                this += MethodDescription(
+                    doc = doc + END_LINE + END_LINE + detail,
+                    annotations = mutableListOf("kotlin.internal.IntrinsicConstEvaluation"),
+                    signature = MethodSignature(
+                        isInfix = true,
+                        isOperator = false,
+                        name = name,
+                        arg = MethodParameter("bitCount", PrimitiveType.INT),
+                        returnType = className
+                    )
+                )
+            }
+        }
+    }
+
+    private fun generateBitwiseOperators(thisKind: PrimitiveType): List<MethodDescription> {
+        return buildList {
+            for ((name, doc) in bitwiseOperators) {
+                this += MethodDescription(
+                    doc = doc,
+                    annotations = mutableListOf("kotlin.internal.IntrinsicConstEvaluation"),
+                    signature = MethodSignature(
+                        isInfix = true,
+                        isOperator = false,
+                        name = name,
+                        arg = MethodParameter("other", thisKind),
+                        returnType = thisKind.capitalized
+                    )
+                )
+            }
+
+            this += MethodDescription(
+                doc = "Inverts the bits in this value.",
+                annotations = mutableListOf("kotlin.internal.IntrinsicConstEvaluation"),
+                signature = MethodSignature(
+                    isOperator = false,
+                    name = "inv",
+                    arg = null,
+                    returnType = thisKind.capitalized
+                )
+            )
+        }
+    }
+
+    private fun generateConversions(kind: PrimitiveType): List<MethodDescription> {
+        fun isFpToIntConversionDeprecated(otherKind: PrimitiveType): Boolean {
+            return kind in PrimitiveType.floatingPoint && otherKind in listOf(PrimitiveType.BYTE, PrimitiveType.SHORT)
+        }
+
+        fun isCharConversionDeprecated(otherKind: PrimitiveType): Boolean {
+            return kind != PrimitiveType.INT && otherKind == PrimitiveType.CHAR
+        }
+
+        return buildList {
+            val thisName = kind.capitalized
+            for (otherKind in PrimitiveType.exceptBoolean) {
+                val otherName = otherKind.capitalized
+                val doc = if (kind == otherKind) {
+                    "Returns this value."
+                } else {
+                    val detail = if (kind in PrimitiveType.integral) {
+                        if (otherKind.isIntegral) {
+                            docForConversionFromIntegralToIntegral(kind, otherKind)
+                        } else {
+                            docForConversionFromIntegralToFloating(kind, otherKind)
+                        }
+                    } else {
+                        if (otherKind.isIntegral) {
+                            docForConversionFromFloatingToIntegral(kind, otherKind)
+                        } else {
+                            docForConversionFromFloatingToFloating(kind, otherKind)
+                        }
+                    }
+
+                    "Converts this [$thisName] value to [$otherName].$END_LINE$END_LINE" + detail
+                }
+
+                val annotations = mutableListOf<String>()
+                if (isFpToIntConversionDeprecated(otherKind)) {
+                    annotations += "Deprecated(\"Unclear conversion. To achieve the same result convert to Int explicitly and then to $otherName.\", ReplaceWith(\"toInt().to$otherName()\"))"
+                    annotations += "DeprecatedSinceKotlin(warningSince = \"1.3\", errorSince = \"1.5\")"
+                }
+                if (isCharConversionDeprecated(otherKind)) {
+                    annotations += "Deprecated(\"Direct conversion to Char is deprecated. Use toInt().toChar() or Char constructor instead.\", ReplaceWith(\"this.toInt().toChar()\"))"
+                    annotations += "DeprecatedSinceKotlin(warningSince = \"1.5\")"
+                }
+
+                annotations += "kotlin.internal.IntrinsicConstEvaluation"
+                this += MethodDescription(
+                    doc = doc,
+                    annotations = annotations,
+                    signature = MethodSignature(
+                        isOperator = false,
+                        isOverride = true,
+                        name = "to$otherName",
+                        arg = null,
+                        returnType = otherName
+                    )
+                )
+            }
+        }
+    }
+
+//    private fun generateEquals(): MethodDescription {
+//        return MethodDescription(
+//            doc = "",
+//            annotations = mutableListOf("kotlin.internal.IntrinsicConstEvaluation"),
+//            signature = MethodSignature(
+//                isOperator = false,
+//                isOverride = true,
+//                name = "equals",
+//                arg = MethodParameter("other", Any),
+//                returnType = "Boolean"
+//            )
+//        )
+//    }
+//
+//    private fun generateToString(): MethodDescription {
+//        return MethodDescription(
+//            doc = "",
+//            annotations = mutableListOf("kotlin.internal.IntrinsicConstEvaluation"),
+//            signature = MethodSignature(
+//                isOperator = false,
+//                isOverride = true,
+//                name = "toString",
+//                arg = null,
+//                returnType = "String"
+//            )
+//        )
+//    }
 
     open fun FileDescription.modifyGeneratedFile() {}
-    open fun ClassDescription.modifyGeneratedClass(kind: PrimitiveType) {}
-    open fun CompanionObjectDescription.modifyGeneratedCompanionObject(kind: PrimitiveType) {}
-    open fun MethodDescription.modifyGeneratedCompareTo(kind: PrimitiveType, otherType: PrimitiveType) {}
-    open fun MethodDescription.modifyGeneratedBinaryOperation(kind: PrimitiveType, otherType: PrimitiveType) {}
-    open fun MethodDescription.modifyGeneratedUnaryOperation(kind: PrimitiveType) {}
+    open fun ClassDescription.modifyGeneratedClass(thisKind: PrimitiveType) {}
+    open fun CompanionObjectDescription.modifyGeneratedCompanionObject(thisKind: PrimitiveType) {}
+    open fun MethodDescription.modifyGeneratedCompareTo(thisKind: PrimitiveType, otherKind: PrimitiveType) {}
+    open fun MethodDescription.modifyGeneratedBinaryOperation(thisKind: PrimitiveType, otherKind: PrimitiveType) {}
+    open fun MethodDescription.modifyGeneratedUnaryOperation(thisKind: PrimitiveType) {}
+    open fun MethodDescription.modifyGeneratedRangeTo(thisKind: PrimitiveType) {}
+    open fun MethodDescription.modifyGeneratedRangeUntil(thisKind: PrimitiveType) {}
 
     // --- Utils ---
     private fun maxByDomainCapacity(type1: PrimitiveType, type2: PrimitiveType): PrimitiveType {
@@ -483,8 +786,8 @@ abstract class BaseGenerator {
 }
 
 class JvmGenerator : BaseGenerator() {
-    override fun ClassDescription.modifyGeneratedClass(kind: PrimitiveType) {
-        this.addDoc("On the JVM, non-nullable values of this type are represented as values of the primitive type `${kind.name.lowercase()}`.")
+    override fun ClassDescription.modifyGeneratedClass(thisKind: PrimitiveType) {
+        this.addDoc("On the JVM, non-nullable values of this type are represented as values of the primitive type `${thisKind.name.lowercase()}`.")
     }
 }
 
@@ -495,27 +798,27 @@ class NativeGenerator : BaseGenerator() {
         this.addImport("kotlin.native.internal.*")
     }
 
-    override fun ClassDescription.modifyGeneratedClass(kind: PrimitiveType) {
+    override fun ClassDescription.modifyGeneratedClass(thisKind: PrimitiveType) {
         this.isFinal = true
     }
 
-    override fun CompanionObjectDescription.modifyGeneratedCompanionObject(kind: PrimitiveType) {
+    override fun CompanionObjectDescription.modifyGeneratedCompanionObject(thisKind: PrimitiveType) {
         this.addAnnotation("CanBePrecreated")
     }
 
-    override fun MethodDescription.modifyGeneratedCompareTo(kind: PrimitiveType, otherType: PrimitiveType) {
-        if (otherType == kind) {
+    override fun MethodDescription.modifyGeneratedCompareTo(thisKind: PrimitiveType, otherKind: PrimitiveType) {
+        if (otherKind == thisKind) {
             addAnnotation("TypedIntrinsic(IntrinsicType.SIGNED_COMPARE_TO)")
             this.signature.isExternal = true
         } else {
             this.signature.isInline = true
-            val thisCasted = "this" + kind.castToIfNecessary(otherType)
-            val otherCasted = this.signature.arg!!.name + otherType.castToIfNecessary(kind)
+            val thisCasted = "this" + thisKind.castToIfNecessary(otherKind)
+            val otherCasted = this.signature.arg!!.name + otherKind.castToIfNecessary(thisKind)
             this.body = " = $END_LINE\t$thisCasted.compareTo($otherCasted)"
         }
     }
 
-    override fun MethodDescription.modifyGeneratedBinaryOperation(kind: PrimitiveType, otherType: PrimitiveType) {
+    override fun MethodDescription.modifyGeneratedBinaryOperation(thisKind: PrimitiveType, otherKind: PrimitiveType) {
         val sign = when (this.signature.name) {
             "plus" -> "+"
             "minus" -> "-"
@@ -525,7 +828,7 @@ class NativeGenerator : BaseGenerator() {
             else -> throw IllegalArgumentException("Unsupported binary operation: ${this.signature.name}")
         }
 
-        if (kind != PrimitiveType.BYTE && kind != PrimitiveType.SHORT && kind == otherType) {
+        if (thisKind != PrimitiveType.BYTE && thisKind != PrimitiveType.SHORT && thisKind == otherKind) {
             this.signature.isExternal = true
             addAnnotation("TypedIntrinsic(IntrinsicType.${this.signature.name.toNativeOperator()})")
             return
@@ -533,18 +836,19 @@ class NativeGenerator : BaseGenerator() {
 
         this.signature.isInline = true
         val returnTypeAsPrimitive = PrimitiveType.valueOf(this.signature.returnType.uppercase())
-        val thisCasted = "this" + kind.castToIfNecessary(returnTypeAsPrimitive)
+        val thisCasted = "this" + thisKind.castToIfNecessary(returnTypeAsPrimitive)
         val otherCasted = this.signature.arg!!.name + this.signature.arg.type.castToIfNecessary(returnTypeAsPrimitive)
         this.body = " = $END_LINE\t$thisCasted $sign $otherCasted"
     }
 
-    override fun MethodDescription.modifyGeneratedUnaryOperation(kind: PrimitiveType) {
+    override fun MethodDescription.modifyGeneratedUnaryOperation(thisKind: PrimitiveType) {
         if (this.signature.name in setOf("inc", "dec")) {
             this.signature.isExternal = true
             this.addAnnotation("TypedIntrinsic(IntrinsicType.${this.signature.name.toNativeOperator()})")
         } else {
+            this.signature.isInline = true
             val returnTypeAsPrimitive = PrimitiveType.valueOf(this.signature.returnType.uppercase())
-            val thisCasted = "this" + kind.castToIfNecessary(returnTypeAsPrimitive)
+            val thisCasted = "this" + thisKind.castToIfNecessary(returnTypeAsPrimitive)
             val sign = if (this.signature.name == "unaryMinus") "-" else ""
             this.body = " = $END_LINE\t$sign$thisCasted"
         }
