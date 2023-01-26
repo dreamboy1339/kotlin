@@ -524,10 +524,12 @@ class NativeGenerator : BaseGenerator() {
         }
 
         if (kind != PrimitiveType.BYTE && kind != PrimitiveType.SHORT && kind == otherType) {
+            this.signature.isExternal = true
             addAnnotation("TypedIntrinsic(IntrinsicType.${this.signature.name.toNativeOperator()})")
             return
         }
 
+        this.signature.isInline = true
         val returnTypeAsPrimitive = PrimitiveType.valueOf(this.signature.returnType.uppercase())
         val thisCasted = "this" + kind.castToIfNecessary(returnTypeAsPrimitive)
         val otherCasted = this.signature.arg!!.name + this.signature.arg.type.castToIfNecessary(returnTypeAsPrimitive)
@@ -541,19 +543,13 @@ class NativeGenerator : BaseGenerator() {
         }
 
         private fun PrimitiveType.castToIfNecessary(otherType: PrimitiveType): String {
+            if (this !in PrimitiveType.onlyNumeric || otherType !in PrimitiveType.onlyNumeric) {
+                throw IllegalArgumentException("Cannot cast to non-numeric type")
+            }
+
             if (this == otherType) return ""
 
-            if (otherType == PrimitiveType.DOUBLE) {
-                return ".to${otherType.capitalized}()"
-            } else if (this != PrimitiveType.DOUBLE && otherType == PrimitiveType.FLOAT) {
-                return ".to${otherType.capitalized}()"
-            } else if (!this.isFloatingPoint && otherType == PrimitiveType.LONG) {
-                return ".to${otherType.capitalized}()"
-            } else if (!this.isFloatingPoint && this != PrimitiveType.LONG && otherType == PrimitiveType.INT) {
-                return ".to${otherType.capitalized}()"
-            } else if (!this.isFloatingPoint && this != PrimitiveType.LONG && this != PrimitiveType.INT && otherType == PrimitiveType.SHORT) {
-                return ".to${otherType.capitalized}()"
-            } else if (!this.isFloatingPoint && this != PrimitiveType.LONG && this != PrimitiveType.INT && this != PrimitiveType.SHORT && otherType == PrimitiveType.BYTE) {
+            if (this.ordinal < otherType.ordinal) {
                 return ".to${otherType.capitalized}()"
             }
 
