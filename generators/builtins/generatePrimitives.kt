@@ -190,7 +190,8 @@ abstract class BaseGenerator {
         )
         internal val unaryPlusMinusOperators: Map<String, String> = mapOf(
             "unaryPlus" to "Returns this value.",
-            "unaryMinus" to "Returns the negative of this value.")
+            "unaryMinus" to "Returns the negative of this value."
+        )
         internal val shiftOperators: Map<String, String> = mapOf(
             "shl" to "Shifts this value left by the [bitCount] number of bits.",
             "shr" to "Shifts this value right by the [bitCount] number of bits, filling the leftmost bits with copies of the sign bit.",
@@ -445,7 +446,7 @@ abstract class BaseGenerator {
                 this += MethodDescription(
                     doc = incDecOperatorsDoc(name),
                     signature = MethodSignature(name = name, arg = null, returnType = kind.capitalized)
-                )
+                ).apply { this.modifyGeneratedUnaryOperation(kind) }
             }
 
             for ((name, doc) in unaryPlusMinusOperators) {
@@ -454,7 +455,7 @@ abstract class BaseGenerator {
                     doc = doc,
                     annotations = mutableListOf("kotlin.internal.IntrinsicConstEvaluation"),
                     signature = MethodSignature(name = name, arg = null, returnType = returnType)
-                )
+                ).apply { this.modifyGeneratedUnaryOperation(kind) }
             }
         }
     }
@@ -467,6 +468,7 @@ abstract class BaseGenerator {
     open fun CompanionObjectDescription.modifyGeneratedCompanionObject(kind: PrimitiveType) {}
     open fun MethodDescription.modifyGeneratedCompareTo(kind: PrimitiveType, otherType: PrimitiveType) {}
     open fun MethodDescription.modifyGeneratedBinaryOperation(kind: PrimitiveType, otherType: PrimitiveType) {}
+    open fun MethodDescription.modifyGeneratedUnaryOperation(kind: PrimitiveType) {}
 
     // --- Utils ---
     private fun maxByDomainCapacity(type1: PrimitiveType, type2: PrimitiveType): PrimitiveType {
@@ -534,6 +536,18 @@ class NativeGenerator : BaseGenerator() {
         val thisCasted = "this" + kind.castToIfNecessary(returnTypeAsPrimitive)
         val otherCasted = this.signature.arg!!.name + this.signature.arg.type.castToIfNecessary(returnTypeAsPrimitive)
         this.body = " = $END_LINE\t$thisCasted $sign $otherCasted"
+    }
+
+    override fun MethodDescription.modifyGeneratedUnaryOperation(kind: PrimitiveType) {
+        if (this.signature.name in setOf("inc", "dec")) {
+            this.signature.isExternal = true
+            this.addAnnotation("TypedIntrinsic(IntrinsicType.${this.signature.name.toNativeOperator()})")
+        } else {
+            val returnTypeAsPrimitive = PrimitiveType.valueOf(this.signature.returnType.uppercase())
+            val thisCasted = "this" + kind.castToIfNecessary(returnTypeAsPrimitive)
+            val sign = if (this.signature.name == "unaryMinus") "-" else ""
+            this.body = " = $END_LINE\t$sign$thisCasted"
+        }
     }
 
     companion object {
