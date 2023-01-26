@@ -9,7 +9,7 @@ plugins {
 
 evaluationDependsOnChildren()
 
-def pKotlinBig() { return project('kotlin_big').extensions }
+def pKotlinBig() { return project('kotlin_big').ext }
 
 ext.outputDir = "$buildDir/doc"
 ext.outputDirLatest = "$outputDir/latest"
