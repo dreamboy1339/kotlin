@@ -8,8 +8,18 @@ import org.jetbrains.kotlin.generators.builtins.generateBuiltIns.BUILT_INS_NATIV
 import java.io.File
 import java.io.PrintWriter
 
+private val END_LINE = System.lineSeparator()
+
 private fun String.shift(): String {
-    return this.split("\n").joinToString(separator = "\n") { "\t$it" }
+    return this.split(END_LINE).joinToString(separator = END_LINE) { "\t$it" }
+}
+
+private fun String.printAsDoc(): String {
+    if (this.contains(END_LINE)) {
+        return this.split(END_LINE)
+            .joinToString(separator = END_LINE, prefix = "/**$END_LINE", postfix = "$END_LINE */") { " * $it" }
+    }
+    return "/** $this */"
 }
 
 data class FileDescription(
@@ -31,53 +41,61 @@ data class FileDescription(
             appendLine()
 
             if (imports.isNotEmpty()) {
-                appendLine(imports.joinToString(separator = "\n") { "import $it" })
+                appendLine(imports.joinToString(separator = END_LINE) { "import $it" })
                 appendLine()
             }
 
-            appendLine(classes.joinToString(separator = "\n"))
+            appendLine(classes.joinToString(separator = END_LINE))
         }
     }
 }
 
 data class ClassDescription(
-    val doc: String, val annotations: List<String>, val name: String,
+    private var doc: String, private val annotations: MutableList<String>, val name: String,
     val companionObject: CompanionObjectDescription, val methods: List<MethodDescription>
 ) {
+    fun addDoc(doc: String) {
+        this.doc += "$END_LINE$doc"
+    }
+
+    fun addAnnotation(annotation: String) {
+        annotations += annotation
+    }
+
     override fun toString(): String {
         return buildString {
-            appendLine(doc.split("\n").joinToString(separator = "\n", prefix = "/**\n", postfix = "\n */") { " * $it" })
+            appendLine(doc.printAsDoc())
             if (annotations.isNotEmpty()) {
-                appendLine(annotations.joinToString(separator = "\n") { "@$it" })
+                appendLine(annotations.joinToString(separator = END_LINE) { "@$it" })
             }
 
             appendLine("public class $name private constructor() : Number(), Comparable<$name> {")
             appendLine(companionObject.toString().shift())
-            appendLine(methods.joinToString(separator = "\n\n") { it.toString().shift() })
+            appendLine(methods.joinToString(separator = END_LINE + END_LINE) { it.toString().shift() })
             appendLine("}")
         }
     }
 }
 
 data class CompanionObjectDescription(
-    val annotations: List<String>, val properties: List<PropertyDescription>
+    private val annotations: MutableList<String>, val properties: List<PropertyDescription>
 ) {
     override fun toString(): String {
         return buildString {
             if (annotations.isNotEmpty()) {
-                appendLine(annotations.joinToString(separator = "\n") { "@$it" })
+                appendLine(annotations.joinToString(separator = END_LINE) { "@$it" })
             }
 
             appendLine("companion object {")
-            appendLine(properties.joinToString(separator = "\n\n") { it.toString().shift() })
+            appendLine(properties.joinToString(separator = END_LINE + END_LINE) { it.toString().shift() })
             appendLine("}")
         }
     }
 }
 
 data class MethodSignature(
-    val isExternal: Boolean = false, val visibility: String,
-    val isOverride: Boolean = false, val isInline: Boolean = false, val isOperator: Boolean = true,
+    var isExternal: Boolean = false, val visibility: String,
+    var isOverride: Boolean = false, var isInline: Boolean = false, var isOperator: Boolean = true,
     val name: String, val arg: String?, val returnType: String
 ) {
     override fun toString(): String {
@@ -93,7 +111,7 @@ data class MethodSignature(
 }
 
 data class MethodDescription(
-    private var doc: String, var annotations: List<String>, var signature: MethodSignature, var body: String? = null
+    private var doc: String, private val annotations: MutableList<String>, var signature: MethodSignature, var body: String? = null
 ) {
     fun addDoc(doc: String) {
         this.doc += doc
@@ -105,9 +123,9 @@ data class MethodDescription(
 
     override fun toString(): String {
         return buildString {
-            appendLine(doc.split("\n").joinToString(separator = "\n", prefix = "/**\n", postfix = "\n */") { " * $it" })
+            appendLine(doc.printAsDoc())
             if (annotations.isNotEmpty()) {
-                appendLine(annotations.joinToString(separator = "\n") { "@$it" })
+                appendLine(annotations.joinToString(separator = END_LINE) { "@$it" })
             }
             append(signature)
             append(body ?: "") // TODO multi/single line body
@@ -120,9 +138,9 @@ data class PropertyDescription(
 ) {
     override fun toString(): String {
         return buildString {
-            appendLine(doc.split("\n").joinToString(separator = "\n", prefix = "/**\n", postfix = "\n */") { " * $it" })
+            appendLine(doc.printAsDoc())
             if (annotations.isNotEmpty()) {
-                appendLine(annotations.joinToString(separator = "\n") { "@$it" })
+                appendLine(annotations.joinToString(separator = END_LINE) { "@$it" })
             }
             append("public const val $name: $type = $value")
         }
@@ -260,29 +278,28 @@ abstract class BaseGenerator {
 
                 this += ClassDescription(
                     doc,
-                    annotations = emptyList(),
+                    annotations = mutableListOf(),
                     name = className,
                     companionObject = CompanionObjectDescription(
-                        annotations = emptyList(),
+                        annotations = mutableListOf(),
                         properties = properties
                     ),
                     methods = methods
-                )
+                ).apply { this.modifyGeneratedClass(kind) }
             }
         }
     }
 
     private fun generateDoc(kind: PrimitiveType): String {
-        return "Represents a ${typeDescriptions[kind]}.\n" +
-                "On the JVM, non-nullable values of this type are represented as values of the primitive type `${kind.name.lowercase()}`."
+        return "Represents a ${typeDescriptions[kind]}."
     }
 
     fun generateCompareTo(kind: PrimitiveType): List<MethodDescription> {
         return buildList {
             for (otherKind in PrimitiveType.onlyNumeric) {
                 val doc =
-                    "Compares this value with the specified value for order. \n" +
-                            "Returns zero if this value is equal to the specified other value, a negative number if it's less than other, \n" +
+                    "Compares this value with the specified value for order. $END_LINE" +
+                            "Returns zero if this value is equal to the specified other value, a negative number if it's less than other, $END_LINE" +
                             "or a positive number if it's greater than other."
 
                 val signature = MethodSignature(
@@ -297,9 +314,9 @@ abstract class BaseGenerator {
 
                 this += MethodDescription(
                     doc = doc,
-                    annotations = listOf("kotlin.internal.IntrinsicConstEvaluation"),
+                    annotations = mutableListOf("kotlin.internal.IntrinsicConstEvaluation"),
                     signature = signature
-                )
+                ).apply { this.modifyGeneratedCompareTo(kind, otherKind) }
             }
         }
     }
@@ -309,18 +326,25 @@ abstract class BaseGenerator {
     fun generateRangeTo(kind: PrimitiveType) {}
     fun generateRangeUntil(kind: PrimitiveType) {}
 
-    abstract fun modifyGeneratedCompareTo(kind: PrimitiveType, otherType: PrimitiveType)
+    open fun ClassDescription.modifyGeneratedClass(kind: PrimitiveType) {}
+    open fun MethodDescription.modifyGeneratedCompareTo(kind: PrimitiveType, otherType: PrimitiveType) {}
 }
 
 class JvmGenerator : BaseGenerator() {
-    override fun modifyGeneratedCompareTo(kind: PrimitiveType, otherType: PrimitiveType) {
-        TODO("Not yet implemented")
+    override fun ClassDescription.modifyGeneratedClass(kind: PrimitiveType) {
+        this.addDoc("On the JVM, non-nullable values of this type are represented as values of the primitive type `${kind.name.lowercase()}`.")
     }
 }
 
 class NativeGenerator : BaseGenerator() {
-    override fun modifyGeneratedCompareTo(kind: PrimitiveType, otherType: PrimitiveType) {
-        TODO("Not yet implemented")
+    override fun MethodDescription.modifyGeneratedCompareTo(kind: PrimitiveType, otherType: PrimitiveType) {
+        if (otherType == kind) {
+            addAnnotation("TypedIntrinsic(IntrinsicType.SIGNED_COMPARE_TO)")
+            this.signature.isExternal = true
+        } else {
+            this.signature.isInline = true
+            this.body = " = $END_LINE\tthis.to${otherType.capitalized}().compareTo(other)"
+        }
     }
 }
 
@@ -329,5 +353,11 @@ fun main() {
     primitivesFile.parentFile?.mkdirs()
     PrintWriter(primitivesFile).use {
         it.print(JvmGenerator().generate())
+    }
+
+    val nativePrimitivesFile = File(BUILT_INS_NATIVE_DIR, "kotlin/Primitives_new_native.kt")
+    nativePrimitivesFile.parentFile?.mkdirs()
+    PrintWriter(nativePrimitivesFile).use {
+        it.print(NativeGenerator().generate())
     }
 }
