@@ -79,7 +79,10 @@ data class ClassDescription(
 
     override fun toString(): String {
         return buildString {
-            appendLine(doc.printAsDoc())
+            if (doc.isNotEmpty()) {
+                appendLine(doc.printAsDoc())
+            }
+
             if (annotations.isNotEmpty()) {
                 appendLine(annotations.joinToString(separator = END_LINE) { "@$it" })
             }
@@ -160,7 +163,10 @@ data class MethodDescription(
 
     override fun toString(): String {
         return buildString {
-            appendLine(doc.printAsDoc())
+            if (doc.isNotEmpty()) {
+                appendLine(doc.printAsDoc())
+            }
+
             if (annotations.isNotEmpty()) {
                 appendLine(annotations.joinToString(separator = END_LINE) { "@$it" })
             }
@@ -180,7 +186,10 @@ data class PropertyDescription(
 
     override fun toString(): String {
         return buildString {
-            appendLine(doc.printAsDoc())
+            if (doc.isNotEmpty()) {
+                appendLine(doc.printAsDoc())
+            }
+
             if (annotations.isNotEmpty()) {
                 appendLine(annotations.joinToString(separator = END_LINE) { "@$it" })
             }
@@ -754,7 +763,7 @@ abstract class BaseGenerator {
                 isOverride = true,
                 isOperator = false,
                 name = "equals",
-                arg = MethodParameter("other", "Any"),
+                arg = MethodParameter("other", "Any?"),
                 returnType = "Boolean"
             )
         )
