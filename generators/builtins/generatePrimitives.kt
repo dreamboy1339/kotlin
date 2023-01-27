@@ -485,7 +485,7 @@ abstract class BaseGenerator {
                     doc,
                     annotations = mutableListOf(),
                     name = className,
-                    companionObject = CompanionObjectDescription(properties = properties),
+                    companionObject = CompanionObjectDescription(properties = properties).apply { this.modifyGeneratedCompanionObject(thisKind) },
                     methods = methods
                 ).apply { this.modifyGeneratedClass(thisKind) }
             }
@@ -852,6 +852,16 @@ class NativeGenerator : BaseGenerator() {
             val sign = if (this.signature.name == "unaryMinus") "-" else ""
             this.body = " = $END_LINE\t$sign$thisCasted"
         }
+    }
+
+    override fun MethodDescription.modifyGeneratedRangeTo(thisKind: PrimitiveType) {
+        TODO()
+        body = ""
+    }
+
+    override fun MethodDescription.modifyGeneratedRangeUntil(thisKind: PrimitiveType) {
+        TODO()
+        body = ""
     }
 
     companion object {
