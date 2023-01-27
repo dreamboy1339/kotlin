@@ -4,6 +4,7 @@
  */
 
 import org.jetbrains.kotlin.generators.builtins.PrimitiveType
+import org.jetbrains.kotlin.generators.builtins.PrimitiveType.Companion.floatingPoint
 import org.jetbrains.kotlin.generators.builtins.generateBuiltIns.BUILT_INS_NATIVE_DIR
 import java.io.File
 import java.io.PrintWriter
@@ -135,9 +136,11 @@ data class MethodSignature(
     }
 }
 
-data class MethodParameter(val name: String, val type: PrimitiveType) {
+data class MethodParameter(val name: String, val type: String) {
+    fun getTypeAsPrimitive(): PrimitiveType = PrimitiveType.valueOf(type.uppercase())
+
     override fun toString(): String {
-        return "$name: ${type.capitalized}"
+        return "$name: $type"
     }
 }
 
@@ -168,8 +171,13 @@ data class MethodDescription(
 }
 
 data class PropertyDescription(
-    val doc: String, val annotations: List<String> = emptyList(), val name: String, val type: String, val value: String
+    private val doc: String, private val annotations: MutableList<String> = mutableListOf(),
+    val name: String, val type: String, val value: String
 ) {
+    fun addAnnotation(annotation: String) {
+        annotations += annotation
+    }
+
     override fun toString(): String {
         return buildString {
             appendLine(doc.printAsDoc())
@@ -446,7 +454,7 @@ abstract class BaseGenerator {
                     val sizeSince = if (thisKind.isFloatingPoint) "1.4" else "1.3"
                     this += PropertyDescription(
                         doc = "The number of bytes used to represent an instance of $className in a binary form.",
-                        listOf("SinceKotlin(\"$sizeSince\")"),
+                        mutableListOf("SinceKotlin(\"$sizeSince\")"),
                         name = "SIZE_BYTES",
                         type = "Int",
                         value = thisKind.byteSize.toString()
@@ -454,7 +462,7 @@ abstract class BaseGenerator {
 
                     this += PropertyDescription(
                         doc = "The number of bits used to represent an instance of $className in a binary form.",
-                        listOf("SinceKotlin(\"$sizeSince\")"),
+                        mutableListOf("SinceKotlin(\"$sizeSince\")"),
                         name = "SIZE_BITS",
                         type = "Int",
                         value = thisKind.bitSize.toString()
@@ -477,10 +485,12 @@ abstract class BaseGenerator {
                     }
 
                     this.addAll(generateConversions(thisKind))
-//                    this += generateEquals()
-//                    this += generateToString()
+                    this += generateEquals()
+                    this += generateToString()
+                    this.addAll(generateAdditionalMethods())
                 }
 
+                properties.forEach { it.modifyGeneratedCompanionObjectProperty(thisKind) }
                 this += ClassDescription(
                     doc,
                     annotations = mutableListOf(),
@@ -508,7 +518,7 @@ abstract class BaseGenerator {
                     isOverride = otherKind == thisKind,
                     isOperator = true,
                     name = "compareTo",
-                    arg = MethodParameter("other", otherKind),
+                    arg = MethodParameter("other", otherKind.capitalized),
                     returnType = "Int"
                 )
 
@@ -545,7 +555,7 @@ abstract class BaseGenerator {
                     signature = MethodSignature(
                         isOperator = true,
                         name = name,
-                        arg = MethodParameter("other", otherKind),
+                        arg = MethodParameter("other", otherKind.capitalized),
                         returnType = returnType.capitalized
                     )
                 ).apply { this.modifyGeneratedBinaryOperation(thisKind, otherKind) }
@@ -590,7 +600,7 @@ abstract class BaseGenerator {
                     signature = MethodSignature(
                         isOperator = true,
                         name = "rangeTo",
-                        arg = MethodParameter("other", otherKind),
+                        arg = MethodParameter("other", otherKind.capitalized),
                         returnType = "${returnType.capitalized}Range"
                     )
                 ).apply { this.modifyGeneratedRangeTo(thisKind) }
@@ -620,7 +630,7 @@ abstract class BaseGenerator {
                     signature = MethodSignature(
                         isOperator = true,
                         name = "rangeUntil",
-                        arg = MethodParameter("other", otherKind),
+                        arg = MethodParameter("other", otherKind.capitalized),
                         returnType = "${returnType.capitalized}Range"
                     )
                 ).apply { this.modifyGeneratedRangeUntil(thisKind) }
@@ -640,10 +650,10 @@ abstract class BaseGenerator {
                         isInfix = true,
                         isOperator = false,
                         name = name,
-                        arg = MethodParameter("bitCount", PrimitiveType.INT),
+                        arg = MethodParameter("bitCount", PrimitiveType.INT.capitalized),
                         returnType = className
                     )
-                )
+                ).apply { this.modifyGeneratedBitShiftOperators(thisKind) }
             }
         }
     }
@@ -658,10 +668,10 @@ abstract class BaseGenerator {
                         isInfix = true,
                         isOperator = false,
                         name = name,
-                        arg = MethodParameter("other", thisKind),
+                        arg = MethodParameter("other", thisKind.capitalized),
                         returnType = thisKind.capitalized
                     )
-                )
+                ).apply { this.modifyGeneratedBitwiseOperators(thisKind) }
             }
 
             this += MethodDescription(
@@ -673,37 +683,37 @@ abstract class BaseGenerator {
                     arg = null,
                     returnType = thisKind.capitalized
                 )
-            )
+            ).apply { this.modifyGeneratedBitwiseOperators(thisKind) }
         }
     }
 
-    private fun generateConversions(kind: PrimitiveType): List<MethodDescription> {
+    private fun generateConversions(thisKind: PrimitiveType): List<MethodDescription> {
         fun isFpToIntConversionDeprecated(otherKind: PrimitiveType): Boolean {
-            return kind in PrimitiveType.floatingPoint && otherKind in listOf(PrimitiveType.BYTE, PrimitiveType.SHORT)
+            return thisKind in PrimitiveType.floatingPoint && otherKind in listOf(PrimitiveType.BYTE, PrimitiveType.SHORT)
         }
 
         fun isCharConversionDeprecated(otherKind: PrimitiveType): Boolean {
-            return kind != PrimitiveType.INT && otherKind == PrimitiveType.CHAR
+            return thisKind != PrimitiveType.INT && otherKind == PrimitiveType.CHAR
         }
 
         return buildList {
-            val thisName = kind.capitalized
+            val thisName = thisKind.capitalized
             for (otherKind in PrimitiveType.exceptBoolean) {
                 val otherName = otherKind.capitalized
-                val doc = if (kind == otherKind) {
+                val doc = if (thisKind == otherKind) {
                     "Returns this value."
                 } else {
-                    val detail = if (kind in PrimitiveType.integral) {
+                    val detail = if (thisKind in PrimitiveType.integral) {
                         if (otherKind.isIntegral) {
-                            docForConversionFromIntegralToIntegral(kind, otherKind)
+                            docForConversionFromIntegralToIntegral(thisKind, otherKind)
                         } else {
-                            docForConversionFromIntegralToFloating(kind, otherKind)
+                            docForConversionFromIntegralToFloating(thisKind, otherKind)
                         }
                     } else {
                         if (otherKind.isIntegral) {
-                            docForConversionFromFloatingToIntegral(kind, otherKind)
+                            docForConversionFromFloatingToIntegral(thisKind, otherKind)
                         } else {
-                            docForConversionFromFloatingToFloating(kind, otherKind)
+                            docForConversionFromFloatingToFloating(thisKind, otherKind)
                         }
                     }
 
@@ -731,47 +741,52 @@ abstract class BaseGenerator {
                         arg = null,
                         returnType = otherName
                     )
-                )
+                ).apply { this.modifyGeneratedConversions(thisKind) }
             }
         }
     }
 
-//    private fun generateEquals(): MethodDescription {
-//        return MethodDescription(
-//            doc = "",
-//            annotations = mutableListOf("kotlin.internal.IntrinsicConstEvaluation"),
-//            signature = MethodSignature(
-//                isOperator = false,
-//                isOverride = true,
-//                name = "equals",
-//                arg = MethodParameter("other", Any),
-//                returnType = "Boolean"
-//            )
-//        )
-//    }
-//
-//    private fun generateToString(): MethodDescription {
-//        return MethodDescription(
-//            doc = "",
-//            annotations = mutableListOf("kotlin.internal.IntrinsicConstEvaluation"),
-//            signature = MethodSignature(
-//                isOperator = false,
-//                isOverride = true,
-//                name = "toString",
-//                arg = null,
-//                returnType = "String"
-//            )
-//        )
-//    }
+    private fun generateEquals(): MethodDescription {
+        return MethodDescription(
+            doc = "",
+            annotations = mutableListOf("kotlin.internal.IntrinsicConstEvaluation"),
+            signature = MethodSignature(
+                isOperator = false,
+                isOverride = true,
+                name = "equals",
+                arg = MethodParameter("other", "Any"),
+                returnType = "Boolean"
+            )
+        )
+    }
+
+    private fun generateToString(): MethodDescription {
+        return MethodDescription(
+            doc = "",
+            annotations = mutableListOf("kotlin.internal.IntrinsicConstEvaluation"),
+            signature = MethodSignature(
+                isOperator = false,
+                isOverride = true,
+                name = "toString",
+                arg = null,
+                returnType = "String"
+            )
+        )
+    }
 
     open fun FileDescription.modifyGeneratedFile() {}
     open fun ClassDescription.modifyGeneratedClass(thisKind: PrimitiveType) {}
     open fun CompanionObjectDescription.modifyGeneratedCompanionObject(thisKind: PrimitiveType) {}
+    open fun PropertyDescription.modifyGeneratedCompanionObjectProperty(thisKind: PrimitiveType) {}
     open fun MethodDescription.modifyGeneratedCompareTo(thisKind: PrimitiveType, otherKind: PrimitiveType) {}
     open fun MethodDescription.modifyGeneratedBinaryOperation(thisKind: PrimitiveType, otherKind: PrimitiveType) {}
     open fun MethodDescription.modifyGeneratedUnaryOperation(thisKind: PrimitiveType) {}
     open fun MethodDescription.modifyGeneratedRangeTo(thisKind: PrimitiveType) {}
     open fun MethodDescription.modifyGeneratedRangeUntil(thisKind: PrimitiveType) {}
+    open fun MethodDescription.modifyGeneratedBitShiftOperators(thisKind: PrimitiveType) {}
+    open fun MethodDescription.modifyGeneratedBitwiseOperators(thisKind: PrimitiveType) {}
+    open fun MethodDescription.modifyGeneratedConversions(thisKind: PrimitiveType) {}
+    open fun generateAdditionalMethods(): List<MethodDescription> = emptyList()
 
     // --- Utils ---
     private fun maxByDomainCapacity(type1: PrimitiveType, type2: PrimitiveType): PrimitiveType {
@@ -803,7 +818,15 @@ class NativeGenerator : BaseGenerator() {
     }
 
     override fun CompanionObjectDescription.modifyGeneratedCompanionObject(thisKind: PrimitiveType) {
-        this.addAnnotation("CanBePrecreated")
+        if (thisKind !in floatingPoint) {
+            this.addAnnotation("CanBePrecreated")
+        }
+    }
+
+    override fun PropertyDescription.modifyGeneratedCompanionObjectProperty(thisKind: PrimitiveType) {
+        if (this.name in setOf("POSITIVE_INFINITY", "NEGATIVE_INFINITY", "NaN")) {
+            this.addAnnotation("Suppress(\"DIVISION_BY_ZERO\")")
+        }
     }
 
     override fun MethodDescription.modifyGeneratedCompareTo(thisKind: PrimitiveType, otherKind: PrimitiveType) {
@@ -837,12 +860,12 @@ class NativeGenerator : BaseGenerator() {
         this.signature.isInline = true
         val returnTypeAsPrimitive = PrimitiveType.valueOf(this.signature.returnType.uppercase())
         val thisCasted = "this" + thisKind.castToIfNecessary(returnTypeAsPrimitive)
-        val otherCasted = this.signature.arg!!.name + this.signature.arg.type.castToIfNecessary(returnTypeAsPrimitive)
+        val otherCasted = this.signature.arg!!.name + this.signature.arg.getTypeAsPrimitive().castToIfNecessary(returnTypeAsPrimitive)
         this.body = " = $END_LINE\t$thisCasted $sign $otherCasted"
     }
 
     override fun MethodDescription.modifyGeneratedUnaryOperation(thisKind: PrimitiveType) {
-        if (this.signature.name in setOf("inc", "dec")) {
+        if (this.signature.name in setOf("inc", "dec") || thisKind == PrimitiveType.INT || thisKind in floatingPoint) {
             this.signature.isExternal = true
             this.addAnnotation("TypedIntrinsic(IntrinsicType.${this.signature.name.toNativeOperator()})")
         } else {
@@ -855,18 +878,30 @@ class NativeGenerator : BaseGenerator() {
     }
 
     override fun MethodDescription.modifyGeneratedRangeTo(thisKind: PrimitiveType) {
-        TODO()
-        body = ""
+        val rangeType = PrimitiveType.valueOf(this.signature.returnType.replace("Range", "").uppercase())
+        val thisCasted = "this" + thisKind.castToIfNecessary(rangeType)
+        val otherCasted = this.signature.arg!!.name + this.signature.arg.getTypeAsPrimitive().castToIfNecessary(rangeType)
+        body = " {${END_LINE}return ${this.signature.returnType}($thisCasted, $otherCasted)${END_LINE}}"
     }
 
     override fun MethodDescription.modifyGeneratedRangeUntil(thisKind: PrimitiveType) {
-        TODO()
-        body = ""
+        body = " = this until ${this.signature.arg!!.name}"
+    }
+
+    override fun MethodDescription.modifyGeneratedBitShiftOperators(thisKind: PrimitiveType) {
+        this.signature.isExternal = true
+        this.addAnnotation("TypedIntrinsic(IntrinsicType.${this.signature.name.toNativeOperator()})")
+    }
+
+    override fun MethodDescription.modifyGeneratedBitwiseOperators(thisKind: PrimitiveType) {
+        this.signature.isExternal = true
+        this.addAnnotation("TypedIntrinsic(IntrinsicType.${this.signature.name.toNativeOperator()})")
     }
 
     companion object {
         private fun String.toNativeOperator(): String {
             if (this == "div" || this == "rem") return "SIGNED_${this.uppercase(Locale.getDefault())}"
+            if (this.startsWith("unary")) return "UNARY_${this.replace("unary", "").uppercase(Locale.getDefault())}"
             return this.uppercase(Locale.getDefault())
         }
 
