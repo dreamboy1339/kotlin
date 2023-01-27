@@ -118,8 +118,8 @@ data class MethodSignature(
     var isExternal: Boolean = false,
     val visibility: String = "public",
     var isInfix: Boolean = false,
-    var isOverride: Boolean = false,
     var isInline: Boolean = false,
+    var isOverride: Boolean = false,
     var isOperator: Boolean = true,
     val name: String, val arg: MethodParameter?, val returnType: String
 ) {
@@ -128,8 +128,8 @@ data class MethodSignature(
             if (isExternal) append("external ")
             append("$visibility ")
             if (isInfix) append("infix ")
-            if (isOverride) append("override ")
             if (isInline) append("inline ")
+            if (isOverride) append("override ")
             if (isOperator) append("operator ")
             append("fun $name(${arg ?: ""}): $returnType")
         }
@@ -735,8 +735,8 @@ abstract class BaseGenerator {
                     doc = doc,
                     annotations = annotations,
                     signature = MethodSignature(
-                        isOperator = false,
                         isOverride = true,
+                        isOperator = false,
                         name = "to$otherName",
                         arg = null,
                         returnType = otherName
@@ -751,8 +751,8 @@ abstract class BaseGenerator {
             doc = "",
             annotations = mutableListOf("kotlin.internal.IntrinsicConstEvaluation"),
             signature = MethodSignature(
-                isOperator = false,
                 isOverride = true,
+                isOperator = false,
                 name = "equals",
                 arg = MethodParameter("other", "Any"),
                 returnType = "Boolean"
@@ -765,8 +765,8 @@ abstract class BaseGenerator {
             doc = "",
             annotations = mutableListOf("kotlin.internal.IntrinsicConstEvaluation"),
             signature = MethodSignature(
-                isOperator = false,
                 isOverride = true,
+                isOperator = false,
                 name = "toString",
                 arg = null,
                 returnType = "String"
@@ -896,6 +896,37 @@ class NativeGenerator : BaseGenerator() {
     override fun MethodDescription.modifyGeneratedBitwiseOperators(thisKind: PrimitiveType) {
         this.signature.isExternal = true
         this.addAnnotation("TypedIntrinsic(IntrinsicType.${this.signature.name.toNativeOperator()})")
+    }
+
+    override fun MethodDescription.modifyGeneratedConversions(thisKind: PrimitiveType) {
+        val returnTypeAsPrimitive = PrimitiveType.valueOf(this.signature.returnType.uppercase())
+        if (returnTypeAsPrimitive == thisKind) {
+            this.signature.isInline = true
+            this.body = " = this"
+        } else if (thisKind !in floatingPoint) {
+            this.signature.isExternal = true
+            val intrinsicType = when {
+                returnTypeAsPrimitive in floatingPoint -> "SIGNED_TO_FLOAT"
+                returnTypeAsPrimitive.byteSize < thisKind.byteSize -> "INT_TRUNCATE"
+                returnTypeAsPrimitive.byteSize > thisKind.byteSize -> "SIGN_EXTEND"
+                else -> "ZERO_EXTEND"
+            }
+            this.addAnnotation("TypedIntrinsic(IntrinsicType.$intrinsicType)")
+        } else {
+            if (returnTypeAsPrimitive in setOf(PrimitiveType.BYTE, PrimitiveType.SHORT, PrimitiveType.CHAR)) {
+                this.body = " = this.toInt().to${this.signature.returnType}()"
+                return
+            }
+
+            this.signature.isExternal = true
+            if (returnTypeAsPrimitive in setOf(PrimitiveType.INT, PrimitiveType.LONG)) {
+                this.addAnnotation("GCUnsafeCall(\"Kotlin_${thisKind.capitalized}_to${this.signature.returnType}\")")
+            } else if (thisKind.byteSize > returnTypeAsPrimitive.byteSize) {
+                this.addAnnotation("TypedIntrinsic(IntrinsicType.FLOAT_TRUNCATE)")
+            } else if (thisKind.byteSize < returnTypeAsPrimitive.byteSize) {
+                this.addAnnotation("TypedIntrinsic(IntrinsicType.FLOAT_EXTEND)")
+            }
+        }
     }
 
     companion object {
