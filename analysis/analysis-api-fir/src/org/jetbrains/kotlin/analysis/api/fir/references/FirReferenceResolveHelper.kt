@@ -496,12 +496,12 @@ internal object FirReferenceResolveHelper {
         }
         val referencedClass = referencedSymbol.fir
         val referencedSymbolsByFir = listOfNotNull(symbolBuilder.buildSymbol(referencedSymbol))
-        val firSourcePsi = when (val psi = fir.source.psi) {
+        val fullQualifiedAccess = when (val psi = fir.source.psi) {
             // for cases like `Foo.Bar()`, where `Foo.Bar` is an object, and `Foo.Bar()` is a call to `invoke` operator
             is KtSimpleNameExpression -> psi.getQualifiedElement()
             else -> psi
         }
-        if (firSourcePsi !is KtDotQualifiedExpression) return referencedSymbolsByFir
+        if (fullQualifiedAccess !is KtDotQualifiedExpression) return referencedSymbolsByFir
 
         // When the source of an `FirResolvedQualifier` is a KtDotQualifiedExpression, we need to manually break up the qualified access and
         // resolve individual parts of it because in FIR, the entire qualified access is one element.
@@ -509,17 +509,21 @@ internal object FirReferenceResolveHelper {
             // TODO: handle local classes after KT-47135 is fixed
             return referencedSymbolsByFir
         } else {
-            var qualifiedAccess: KtDotQualifiedExpression = firSourcePsi
+            var qualifiedAccess: KtDotQualifiedExpression = fullQualifiedAccess
             val referencedClassId =
-                if ((referencedClass as? FirRegularClass)?.isCompanion == true &&
-                    (qualifiedAccess.selectorExpression?.referenceExpression() as? KtNameReferenceExpression)?.getReferencedName() != referencedClass.classId.shortClassName.asString()
-                ) {
-                    // If we're looking at the last qualifier, then just resolve to the companion
-                    if (expression === qualifiedAccess.selectorExpression?.referenceExpression()) return referencedSymbolsByFir
+                if ((referencedClass as? FirRegularClass)?.isCompanion == true) {
+                    val deepestQualifier = qualifiedAccess.selectorExpression?.referenceExpression() as? KtNameReferenceExpression
 
-                    // Remove the last companion name part if the qualified access does not contain it.
-                    // This is needed because the companion name part is optional.
-                    referencedClass.classId.outerClassId ?: return referencedSymbolsByFir
+                    // If we're looking for the deepest qualifier, then just resolve to the companion
+                    if (expression === deepestQualifier) return referencedSymbolsByFir
+
+                    if (deepestQualifier?.getReferencedName() != referencedClass.classId.shortClassName.asString()) {
+                        // Remove the last companion name part if the qualified access does not contain it.
+                        // This is needed because the companion name part is optional.
+                        referencedClass.classId.outerClassId ?: return referencedSymbolsByFir
+                    } else {
+                        referencedClass.classId
+                    }
                 } else {
                     referencedClass.classId
                 }
