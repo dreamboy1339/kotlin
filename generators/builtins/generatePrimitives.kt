@@ -32,9 +32,9 @@ abstract class AnnotatedAndDocumented {
         annotations += annotation
     }
 
-    fun StringBuilder.printDocumentationAndAnnotations() {
+    fun StringBuilder.printDocumentationAndAnnotations(forceMultiLineDoc: Boolean = false) {
         if (doc != null) {
-            appendLine(doc!!.printAsDoc())
+            appendLine(doc!!.printAsDoc(forceMultiLineDoc))
         }
 
         if (annotations.isNotEmpty()) {
@@ -42,8 +42,8 @@ abstract class AnnotatedAndDocumented {
         }
     }
 
-    private fun String.printAsDoc(): String {
-        if (this.contains(END_LINE)) {
+    private fun String.printAsDoc(forceMultiLine: Boolean = false): String {
+        if (this.contains(END_LINE) || forceMultiLine) {
             return this.split(END_LINE)
                 .joinToString(separator = END_LINE, prefix = "/**$END_LINE", postfix = "$END_LINE */") { " * $it" }
         }
@@ -191,7 +191,7 @@ data class PropertyDescription(
 ) : AnnotatedAndDocumented() {
     override fun toString(): String {
         return buildString {
-            printDocumentationAndAnnotations()
+            printDocumentationAndAnnotations(forceMultiLineDoc = true)
             append("public const val $name: $type = $value")
         }
     }
