@@ -162,14 +162,23 @@ data class MethodDescription(
     override var doc: String?,
     override val annotations: MutableList<String> = mutableListOf(),
     val signature: MethodSignature,
-    var body: String? = null
+    private var body: String? = null
 ) : AnnotatedAndDocumented() {
     override fun toString(): String {
         return buildString {
             printDocumentationAndAnnotations()
             append(signature)
-            append(body ?: "") // TODO multi/single line body
+            append(body ?: "")
         }
+    }
+
+    fun String.addAsSingleLineBody(bodyOnNewLine: Boolean = false): String {
+        val skip = if (bodyOnNewLine) "$END_LINE\t" else ""
+        return " = $skip$this"
+    }
+
+    fun String.addAsMultiLineBody(): String {
+        return " {$END_LINE${this.shift()}$END_LINE}"
     }
 }
 
@@ -842,19 +851,17 @@ class NativeGenerator : BaseGenerator() {
         if (otherKind == thisKind) {
             if (thisKind in floatingPoint) {
                 val argName = this.signature.arg!!.name
-                this.body = """
-                    {
-                        // if any of values in NaN both comparisons return false
-                        if (this > $argName) return 1
-                        if (this < $argName) return -1
-                
-                        val thisBits = this.toBits()
-                        val otherBits = $argName.toBits()
-                
-                        // Canonical NaN bits representation higher than any other bit represent value
-                        return thisBits.compareTo(otherBits)
-                    }
-                """.trimIndent()
+                """
+                    // if any of values in NaN both comparisons return false
+                    if (this > $argName) return 1
+                    if (this < $argName) return -1
+            
+                    val thisBits = this.toBits()
+                    val otherBits = $argName.toBits()
+            
+                    // Canonical NaN bits representation higher than any other bit represent value
+                    return thisBits.compareTo(otherBits)
+                """.trimIndent().addAsMultiLineBody()
             } else {
                 addAnnotation("TypedIntrinsic(IntrinsicType.SIGNED_COMPARE_TO)")
                 this.signature.isExternal = true
@@ -863,7 +870,11 @@ class NativeGenerator : BaseGenerator() {
             this.signature.isInline = thisKind !in floatingPoint
             val thisCasted = "this" + thisKind.castToIfNecessary(otherKind)
             val otherCasted = this.signature.arg!!.name + otherKind.castToIfNecessary(thisKind)
-            this.body = " = $END_LINE\t$thisCasted.compareTo($otherCasted)"
+            if (thisKind == PrimitiveType.FLOAT && otherKind == PrimitiveType.DOUBLE) {
+                "- ${otherCasted}.compareTo(this)".addAsSingleLineBody(bodyOnNewLine = true)
+            } else {
+                "$thisCasted.compareTo($otherCasted)".addAsSingleLineBody(bodyOnNewLine = true)
+            }
         }
     }
 
@@ -887,7 +898,7 @@ class NativeGenerator : BaseGenerator() {
         val returnTypeAsPrimitive = PrimitiveType.valueOf(this.signature.returnType.uppercase())
         val thisCasted = "this" + thisKind.castToIfNecessary(returnTypeAsPrimitive)
         val otherCasted = this.signature.arg!!.name + this.signature.arg.getTypeAsPrimitive().castToIfNecessary(returnTypeAsPrimitive)
-        this.body = " = $END_LINE\t$thisCasted $sign $otherCasted"
+        "$thisCasted $sign $otherCasted".addAsSingleLineBody(bodyOnNewLine = true)
     }
 
     override fun MethodDescription.modifyGeneratedUnaryOperation(thisKind: PrimitiveType) {
@@ -901,7 +912,7 @@ class NativeGenerator : BaseGenerator() {
             val returnTypeAsPrimitive = PrimitiveType.valueOf(this.signature.returnType.uppercase())
             val thisCasted = "this" + thisKind.castToIfNecessary(returnTypeAsPrimitive)
             val sign = if (this.signature.name == "unaryMinus") "-" else ""
-            this.body = " = $END_LINE\t$sign$thisCasted"
+            "$sign$thisCasted".addAsSingleLineBody(bodyOnNewLine = true)
         }
     }
 
@@ -909,11 +920,11 @@ class NativeGenerator : BaseGenerator() {
         val rangeType = PrimitiveType.valueOf(this.signature.returnType.replace("Range", "").uppercase())
         val thisCasted = "this" + thisKind.castToIfNecessary(rangeType)
         val otherCasted = this.signature.arg!!.name + this.signature.arg.getTypeAsPrimitive().castToIfNecessary(rangeType)
-        body = " {$END_LINE\treturn ${this.signature.returnType}($thisCasted, $otherCasted)$END_LINE}"
+        "return ${this.signature.returnType}($thisCasted, $otherCasted)".addAsMultiLineBody()
     }
 
     override fun MethodDescription.modifyGeneratedRangeUntil(thisKind: PrimitiveType) {
-        body = " = this until ${this.signature.arg!!.name}"
+        "this until ${this.signature.arg!!.name}".addAsSingleLineBody(bodyOnNewLine = false)
     }
 
     override fun MethodDescription.modifyGeneratedBitShiftOperators(thisKind: PrimitiveType) {
@@ -930,7 +941,7 @@ class NativeGenerator : BaseGenerator() {
         val returnTypeAsPrimitive = PrimitiveType.valueOf(this.signature.returnType.uppercase())
         if (returnTypeAsPrimitive == thisKind) {
             this.signature.isInline = true
-            this.body = " = this"
+            "this".addAsSingleLineBody(bodyOnNewLine = true)
         } else if (thisKind !in floatingPoint) {
             this.signature.isExternal = true
             val intrinsicType = when {
@@ -942,7 +953,7 @@ class NativeGenerator : BaseGenerator() {
             this.addAnnotation("TypedIntrinsic(IntrinsicType.$intrinsicType)")
         } else {
             if (returnTypeAsPrimitive in setOf(PrimitiveType.BYTE, PrimitiveType.SHORT, PrimitiveType.CHAR)) {
-                this.body = " = this.toInt().to${this.signature.returnType}()"
+                "this.toInt().to${this.signature.returnType}()".addAsSingleLineBody(bodyOnNewLine = false)
                 return
             }
 
@@ -964,12 +975,12 @@ class NativeGenerator : BaseGenerator() {
         } else {
             "kotlin.native.internal.areEqualByValue(this, $argName)"
         }
-        this.body = " =$END_LINE\t\t$argName is ${thisKind.capitalized} && $additionalCheck"
+        "\t$argName is ${thisKind.capitalized} && $additionalCheck".addAsSingleLineBody(bodyOnNewLine = true)
     }
 
     override fun MethodDescription.modifyGeneratedToString(thisKind: PrimitiveType) {
         if (thisKind in floatingPoint) {
-            this.body = " = NumberConverter.convert(this)"
+            "NumberConverter.convert(this)".addAsSingleLineBody(bodyOnNewLine = false)
         } else {
             this.signature.isExternal = true
             this.addAnnotation("GCUnsafeCall(\"Kotlin_${thisKind.capitalized}_toString\")")
@@ -992,7 +1003,7 @@ class NativeGenerator : BaseGenerator() {
                 PrimitiveType.DOUBLE -> "toBits().hashCode()"
                 else -> "this" + thisKind.castToIfNecessary(PrimitiveType.INT)
             }
-            body = " {$END_LINE\treturn $calculation$END_LINE}"
+            "return $calculation".addAsMultiLineBody()
         }
 
         val customEquals = MethodDescription(
@@ -1003,10 +1014,9 @@ class NativeGenerator : BaseGenerator() {
                 returnType = PrimitiveType.BOOLEAN.capitalized
             )
         ).apply {
-            body = if (thisKind in floatingPoint) {
-                " = toBits() == other.toBits()"
-            } else {
-                " = kotlin.native.internal.areEqualByValue(this, other)"
+            when (thisKind) {
+                in floatingPoint -> "toBits() == other.toBits()".addAsSingleLineBody(bodyOnNewLine = false)
+                else -> "kotlin.native.internal.areEqualByValue(this, other)".addAsSingleLineBody(bodyOnNewLine = false)
             }
         }
 
