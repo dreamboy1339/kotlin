@@ -29869,6 +29869,12 @@ public class FirOldFrontendDiagnosticsTestGenerated extends AbstractFirDiagnosti
             }
 
             @Test
+            @TestMetadata("smartcastAndSuppress.kt")
+            public void testSmartcastAndSuppress() throws Exception {
+                runTest("compiler/testData/diagnostics/tests/smartCasts/smartcastAndSuppress.kt");
+            }
+
+            @Test
             @TestMetadata("smartcastOnSameFieldOfDifferentInstances.kt")
             public void testSmartcastOnSameFieldOfDifferentInstances() throws Exception {
                 runTest("compiler/testData/diagnostics/tests/smartCasts/smartcastOnSameFieldOfDifferentInstances.kt");

@@ -12,8 +12,7 @@ import org.jetbrains.kotlin.fir.declarations.*
 import org.jetbrains.kotlin.fir.declarations.synthetic.FirSyntheticPropertyAccessor
 import org.jetbrains.kotlin.fir.declarations.utils.*
 import org.jetbrains.kotlin.fir.declarations.utils.isStatic
-import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
-import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
+import org.jetbrains.kotlin.fir.expressions.*
 import org.jetbrains.kotlin.fir.references.FirSuperReference
 import org.jetbrains.kotlin.fir.resolve.*
 import org.jetbrains.kotlin.fir.resolve.calls.ExpressionReceiverValue
@@ -183,9 +182,14 @@ abstract class FirVisibilityChecker : FirSessionComponent {
                 if (dispatchReceiverValue != null) {
                     val baseReceiverType = dispatchReceiverClassTypeOrNull()
                     if (baseReceiverType != null) {
-                        dispatchReceiverValue.type.findClassRepresentation(baseReceiverType, session)?.toSymbol(session)?.fir?.let {
-                            return it
-                        }
+                        dispatchReceiverValue.receiverExpression
+                            .unwrapSmartcastExpression()
+                            .typeRef
+                            .coneType
+                            .findClassRepresentation(baseReceiverType, session)
+                            ?.toSymbol(session)
+                            ?.fir
+                            ?.let { return it }
                     }
                 }
 
