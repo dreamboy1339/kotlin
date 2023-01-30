@@ -9,7 +9,8 @@ import org.jetbrains.kotlin.generators.builtins.PrimitiveType
 import org.jetbrains.kotlin.generators.builtins.UnsignedType
 import org.jetbrains.kotlin.generators.builtins.convert
 import org.jetbrains.kotlin.generators.builtins.generateBuiltIns.BuiltInsSourceGenerator
-import org.jetbrains.kotlin.generators.builtins.numbers.BasePrimitivesGenerator
+import org.jetbrains.kotlin.generators.builtins.numbers.primitives.BasePrimitivesGenerator
+import org.jetbrains.kotlin.generators.builtins.numbers.primitives.END_LINE
 import org.jetbrains.kotlin.generators.builtins.printDoc
 import java.io.File
 import java.io.PrintWriter
@@ -242,7 +243,7 @@ class UnsignedTypeGenerator(val type: UnsignedType, out: PrintWriter) : BuiltIns
         fun generateShiftOperator(name: String, implementation: String = name) {
             val doc = BasePrimitivesGenerator.shiftOperators[implementation]!!
             val detail = BasePrimitivesGenerator.shiftOperatorsDocDetail(type.asSigned)
-            out.printDoc(doc + System.lineSeparator() + System.lineSeparator() + detail, "    ")
+            out.printDoc(doc + END_LINE + END_LINE + detail, "    ")
             out.println("    @kotlin.internal.InlineOnly")
             out.println("    public inline infix fun $name(bitCount: Int): $className = $className(data $implementation bitCount)")
             out.println()

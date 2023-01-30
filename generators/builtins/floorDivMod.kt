@@ -8,6 +8,7 @@ package org.jetbrains.kotlin.generators.builtins.numbers
 import org.jetbrains.kotlin.generators.builtins.PrimitiveType
 import org.jetbrains.kotlin.generators.builtins.convert
 import org.jetbrains.kotlin.generators.builtins.generateBuiltIns.BuiltInsSourceGenerator
+import org.jetbrains.kotlin.generators.builtins.numbers.primitives.BasePrimitivesGenerator
 import org.jetbrains.kotlin.generators.builtins.printDoc
 import java.io.PrintWriter
 

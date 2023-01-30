@@ -10,8 +10,8 @@ import org.jetbrains.kotlin.generators.builtins.arrays.GenerateArrays
 import org.jetbrains.kotlin.generators.builtins.functions.GenerateFunctions
 import org.jetbrains.kotlin.generators.builtins.iterators.GenerateIterators
 import org.jetbrains.kotlin.generators.builtins.numbers.GenerateFloorDivMod
-import org.jetbrains.kotlin.generators.builtins.numbers.JvmPrimitivesGenerator
-import org.jetbrains.kotlin.generators.builtins.numbers.NativePrimitivesGenerator
+import org.jetbrains.kotlin.generators.builtins.numbers.primitives.JvmPrimitivesGenerator
+import org.jetbrains.kotlin.generators.builtins.numbers.primitives.NativePrimitivesGenerator
 import org.jetbrains.kotlin.generators.builtins.progressionIterators.GenerateProgressionIterators
 import org.jetbrains.kotlin.generators.builtins.progressions.GenerateProgressions
 import org.jetbrains.kotlin.generators.builtins.ranges.GenerateRanges
