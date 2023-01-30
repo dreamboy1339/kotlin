@@ -174,13 +174,13 @@ internal data class MethodDescription(
         }
     }
 
-    fun String.addAsSingleLineBody(bodyOnNewLine: Boolean = false): String {
+    fun String.addAsSingleLineBody(bodyOnNewLine: Boolean = false) {
         val skip = if (bodyOnNewLine) "$END_LINE\t" else ""
-        return " = $skip$this"
+        body = " = $skip$this"
     }
 
-    fun String.addAsMultiLineBody(): String {
-        return " {$END_LINE${this.shift()}$END_LINE}"
+    fun String.addAsMultiLineBody() {
+        body = " {$END_LINE${this.shift()}$END_LINE}"
     }
 }
 

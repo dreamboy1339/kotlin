@@ -192,13 +192,12 @@ class NativePrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(w
                 returnType = PrimitiveType.INT.capitalized
             )
         ).apply {
-            val calculation = when (thisKind) {
-                PrimitiveType.LONG -> "((this ushr 32) xor this).toInt()"
-                PrimitiveType.FLOAT -> "toBits()"
-                PrimitiveType.DOUBLE -> "toBits().hashCode()"
-                else -> "this" + thisKind.castToIfNecessary(PrimitiveType.INT)
+            when (thisKind) {
+                PrimitiveType.LONG -> "return ((this ushr 32) xor this).toInt()".addAsMultiLineBody()
+                PrimitiveType.FLOAT -> "toBits()".addAsSingleLineBody()
+                PrimitiveType.DOUBLE -> "toBits().hashCode()".addAsSingleLineBody()
+                else -> "return this${thisKind.castToIfNecessary(PrimitiveType.INT)}".addAsMultiLineBody()
             }
-            "return $calculation".addAsMultiLineBody()
         }
 
         val customEquals = MethodDescription(
