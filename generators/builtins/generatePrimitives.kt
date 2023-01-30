@@ -402,81 +402,7 @@ abstract class BaseGenerator {
         return buildList {
             for (thisKind in PrimitiveType.onlyNumeric) {
                 val className = thisKind.capitalized
-                val doc = generateDoc(thisKind)
-
-                val properties = buildList {
-                    if (thisKind == PrimitiveType.FLOAT || thisKind == PrimitiveType.DOUBLE) {
-                        val (minValue, maxValue, posInf, negInf, nan) = primitiveConstants(thisKind)
-                        this += PropertyDescription(
-                            doc = "A constant holding the smallest *positive* nonzero value of $className.",
-                            name = "MIN_VALUE",
-                            type = className,
-                            value = minValue.toString()
-                        )
-
-                        this += PropertyDescription(
-                            doc = "A constant holding the largest positive finite value of $className.",
-                            name = "MAX_VALUE",
-                            type = className,
-                            value = maxValue.toString()
-                        )
-
-                        this += PropertyDescription(
-                            doc = "A constant holding the positive infinity value of $className.",
-                            name = "POSITIVE_INFINITY",
-                            type = className,
-                            value = posInf.toString()
-                        )
-
-                        this += PropertyDescription(
-                            doc = "A constant holding the negative infinity value of $className.",
-                            name = "NEGATIVE_INFINITY",
-                            type = className,
-                            value = negInf.toString()
-                        )
-
-                        this += PropertyDescription(
-                            doc = "A constant holding the \"not a number\" value of $className.",
-                            name = "NaN",
-                            type = className,
-                            value = nan.toString()
-                        )
-                    }
-
-                    if (thisKind == PrimitiveType.INT || thisKind == PrimitiveType.LONG || thisKind == PrimitiveType.SHORT || thisKind == PrimitiveType.BYTE) {
-                        val (minValue, maxValue) = primitiveConstants(thisKind)
-                        this += PropertyDescription(
-                            doc = "A constant holding the minimum value an instance of $className can have.",
-                            name = "MIN_VALUE",
-                            type = className,
-                            value = minValue.toString()
-                        )
-
-                        this += PropertyDescription(
-                            doc = "A constant holding the maximum value an instance of $className can have.",
-                            name = "MAX_VALUE",
-                            type = className,
-                            value = maxValue.toString()
-                        )
-                    }
-
-                    val sizeSince = if (thisKind.isFloatingPoint) "1.4" else "1.3"
-                    this += PropertyDescription(
-                        doc = "The number of bytes used to represent an instance of $className in a binary form.",
-                        mutableListOf("SinceKotlin(\"$sizeSince\")"),
-                        name = "SIZE_BYTES",
-                        type = "Int",
-                        value = thisKind.byteSize.toString()
-                    )
-
-                    this += PropertyDescription(
-                        doc = "The number of bits used to represent an instance of $className in a binary form.",
-                        mutableListOf("SinceKotlin(\"$sizeSince\")"),
-                        name = "SIZE_BITS",
-                        type = "Int",
-                        value = thisKind.bitSize.toString()
-                    )
-                }
+                val doc = "Represents a ${typeDescriptions[thisKind]}."
 
                 val methods = buildList {
                     this.addAll(generateCompareTo(thisKind))
@@ -499,20 +425,95 @@ abstract class BaseGenerator {
                     this.addAll(generateAdditionalMethods(thisKind))
                 }
 
-                properties.forEach { it.modifyGeneratedCompanionObjectProperty(thisKind) }
                 this += ClassDescription(
                     doc,
                     annotations = mutableListOf(),
                     name = className,
-                    companionObject = CompanionObjectDescription(properties = properties).apply { this.modifyGeneratedCompanionObject(thisKind) },
+                    companionObject = generateCompanionObject(thisKind),
                     methods = methods
                 ).apply { this.modifyGeneratedClass(thisKind) }
             }
         }
     }
 
-    private fun generateDoc(thisKind: PrimitiveType): String {
-        return "Represents a ${typeDescriptions[thisKind]}."
+    private fun generateCompanionObject(thisKind: PrimitiveType): CompanionObjectDescription {
+        val properties = buildList {
+            val className = thisKind.capitalized
+            if (thisKind == PrimitiveType.FLOAT || thisKind == PrimitiveType.DOUBLE) {
+                val (minValue, maxValue, posInf, negInf, nan) = primitiveConstants(thisKind)
+                this += PropertyDescription(
+                    doc = "A constant holding the smallest *positive* nonzero value of $className.",
+                    name = "MIN_VALUE",
+                    type = className,
+                    value = minValue.toString()
+                )
+
+                this += PropertyDescription(
+                    doc = "A constant holding the largest positive finite value of $className.",
+                    name = "MAX_VALUE",
+                    type = className,
+                    value = maxValue.toString()
+                )
+
+                this += PropertyDescription(
+                    doc = "A constant holding the positive infinity value of $className.",
+                    name = "POSITIVE_INFINITY",
+                    type = className,
+                    value = posInf.toString()
+                )
+
+                this += PropertyDescription(
+                    doc = "A constant holding the negative infinity value of $className.",
+                    name = "NEGATIVE_INFINITY",
+                    type = className,
+                    value = negInf.toString()
+                )
+
+                this += PropertyDescription(
+                    doc = "A constant holding the \"not a number\" value of $className.",
+                    name = "NaN",
+                    type = className,
+                    value = nan.toString()
+                )
+            }
+
+            if (thisKind == PrimitiveType.INT || thisKind == PrimitiveType.LONG || thisKind == PrimitiveType.SHORT || thisKind == PrimitiveType.BYTE) {
+                val (minValue, maxValue) = primitiveConstants(thisKind)
+                this += PropertyDescription(
+                    doc = "A constant holding the minimum value an instance of $className can have.",
+                    name = "MIN_VALUE",
+                    type = className,
+                    value = minValue.toString()
+                )
+
+                this += PropertyDescription(
+                    doc = "A constant holding the maximum value an instance of $className can have.",
+                    name = "MAX_VALUE",
+                    type = className,
+                    value = maxValue.toString()
+                )
+            }
+
+            val sizeSince = if (thisKind.isFloatingPoint) "1.4" else "1.3"
+            this += PropertyDescription(
+                doc = "The number of bytes used to represent an instance of $className in a binary form.",
+                mutableListOf("SinceKotlin(\"$sizeSince\")"),
+                name = "SIZE_BYTES",
+                type = "Int",
+                value = thisKind.byteSize.toString()
+            )
+
+            this += PropertyDescription(
+                doc = "The number of bits used to represent an instance of $className in a binary form.",
+                mutableListOf("SinceKotlin(\"$sizeSince\")"),
+                name = "SIZE_BITS",
+                type = "Int",
+                value = thisKind.bitSize.toString()
+            )
+        }
+
+        properties.forEach { it.modifyGeneratedCompanionObjectProperty(thisKind) }
+        return CompanionObjectDescription(properties = properties).apply { this.modifyGeneratedCompanionObject(thisKind) }
     }
 
     private fun generateCompareTo(thisKind: PrimitiveType): List<MethodDescription> {
@@ -528,7 +529,7 @@ abstract class BaseGenerator {
                     isOperator = true,
                     name = "compareTo",
                     arg = MethodParameter("other", otherKind.capitalized),
-                    returnType = "Int"
+                    returnType = PrimitiveType.INT.capitalized
                 )
 
                 this += MethodDescription(
@@ -582,7 +583,10 @@ abstract class BaseGenerator {
             }
 
             for ((name, doc) in unaryPlusMinusOperators) {
-                val returnType = if (thisKind in listOf(PrimitiveType.SHORT, PrimitiveType.BYTE, PrimitiveType.CHAR)) "Int" else thisKind.capitalized
+                val returnType = when (thisKind) {
+                    in listOf(PrimitiveType.SHORT, PrimitiveType.BYTE, PrimitiveType.CHAR) -> PrimitiveType.INT.capitalized
+                    else -> thisKind.capitalized
+                }
                 this += MethodDescription(
                     doc = doc,
                     annotations = mutableListOf("kotlin.internal.IntrinsicConstEvaluation"),
@@ -657,7 +661,6 @@ abstract class BaseGenerator {
                     annotations = mutableListOf("kotlin.internal.IntrinsicConstEvaluation"),
                     signature = MethodSignature(
                         isInfix = true,
-                        isOperator = false,
                         name = name,
                         arg = MethodParameter("bitCount", PrimitiveType.INT.capitalized),
                         returnType = className
@@ -675,7 +678,6 @@ abstract class BaseGenerator {
                     annotations = mutableListOf("kotlin.internal.IntrinsicConstEvaluation"),
                     signature = MethodSignature(
                         isInfix = true,
-                        isOperator = false,
                         name = name,
                         arg = MethodParameter("other", thisKind.capitalized),
                         returnType = thisKind.capitalized
@@ -687,7 +689,6 @@ abstract class BaseGenerator {
                 doc = "Inverts the bits in this value.",
                 annotations = mutableListOf("kotlin.internal.IntrinsicConstEvaluation"),
                 signature = MethodSignature(
-                    isOperator = false,
                     name = "inv",
                     arg = null,
                     returnType = thisKind.capitalized
@@ -745,7 +746,6 @@ abstract class BaseGenerator {
                     annotations = annotations,
                     signature = MethodSignature(
                         isOverride = true,
-                        isOperator = false,
                         name = "to$otherName",
                         arg = null,
                         returnType = otherName
@@ -761,7 +761,6 @@ abstract class BaseGenerator {
             annotations = mutableListOf("kotlin.internal.IntrinsicConstEvaluation"),
             signature = MethodSignature(
                 isOverride = true,
-                isOperator = false,
                 name = "equals",
                 arg = MethodParameter("other", "Any?"),
                 returnType = "Boolean"
@@ -775,7 +774,6 @@ abstract class BaseGenerator {
             annotations = mutableListOf("kotlin.internal.IntrinsicConstEvaluation"),
             signature = MethodSignature(
                 isOverride = true,
-                isOperator = false,
                 name = "toString",
                 arg = null,
                 returnType = "String"
