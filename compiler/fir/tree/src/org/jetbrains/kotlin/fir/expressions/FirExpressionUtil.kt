@@ -122,3 +122,9 @@ fun <T : FirStatement> FirBlock.replaceFirstStatement(factory: (T) -> FirStateme
 }
 
 fun FirExpression.unwrapArgument(): FirExpression = (this as? FirWrappedArgumentExpression)?.expression ?: this
+
+fun FirExpression.unwrapSmartcastExpression(): FirExpression =
+    when (this) {
+        is FirSmartCastExpression -> originalExpression
+        else -> this
+    }
