@@ -16,12 +16,39 @@ private fun String.shift(): String {
     return this.split(END_LINE).joinToString(separator = END_LINE) { "\t$it" }
 }
 
-private fun String.printAsDoc(): String {
-    if (this.contains(END_LINE)) {
-        return this.split(END_LINE)
-            .joinToString(separator = END_LINE, prefix = "/**$END_LINE", postfix = "$END_LINE */") { " * $it" }
+abstract class AnnotatedAndDocumented {
+    protected abstract var doc: String?
+    protected abstract val annotations: MutableList<String>
+
+    fun addDoc(doc: String) {
+        if (this.doc == null) {
+            this.doc = doc
+        } else {
+            this.doc += "$END_LINE$doc"
+        }
     }
-    return "/** $this */"
+
+    fun addAnnotation(annotation: String) {
+        annotations += annotation
+    }
+
+    fun StringBuilder.printDocumentationAndAnnotations() {
+        if (doc != null) {
+            appendLine(doc!!.printAsDoc())
+        }
+
+        if (annotations.isNotEmpty()) {
+            appendLine(annotations.joinToString(separator = END_LINE) { "@$it" })
+        }
+    }
+
+    private fun String.printAsDoc(): String {
+        if (this.contains(END_LINE)) {
+            return this.split(END_LINE)
+                .joinToString(separator = END_LINE, prefix = "/**$END_LINE", postfix = "$END_LINE */") { " * $it" }
+        }
+        return "/** $this */"
+    }
 }
 
 data class FileDescription(
@@ -63,29 +90,16 @@ data class FileDescription(
 }
 
 data class ClassDescription(
-    private var doc: String,
-    private val annotations: MutableList<String>,
+    override var doc: String?,
+    override val annotations: MutableList<String>,
     var isFinal: Boolean = false,
     val name: String,
-    val companionObject: CompanionObjectDescription, val methods: List<MethodDescription>
-) {
-    fun addDoc(doc: String) {
-        this.doc += "$END_LINE$doc"
-    }
-
-    fun addAnnotation(annotation: String) {
-        annotations += annotation
-    }
-
+    val companionObject: CompanionObjectDescription,
+    val methods: List<MethodDescription>
+) : AnnotatedAndDocumented() {
     override fun toString(): String {
         return buildString {
-            if (doc.isNotEmpty()) {
-                appendLine(doc.printAsDoc())
-            }
-
-            if (annotations.isNotEmpty()) {
-                appendLine(annotations.joinToString(separator = END_LINE) { "@$it" })
-            }
+            this.printDocumentationAndAnnotations()
 
             append("public ")
             if (isFinal) append("final ")
@@ -98,18 +112,13 @@ data class ClassDescription(
 }
 
 data class CompanionObjectDescription(
-    private val annotations: MutableList<String> = mutableListOf(), val properties: List<PropertyDescription>
-) {
-    fun addAnnotation(annotation: String) {
-        annotations += annotation
-    }
-
+    override var doc: String? = null,
+    override val annotations: MutableList<String> = mutableListOf(),
+    val properties: List<PropertyDescription>
+) : AnnotatedAndDocumented() {
     override fun toString(): String {
         return buildString {
-            if (annotations.isNotEmpty()) {
-                appendLine(annotations.joinToString(separator = END_LINE) { "@$it" })
-            }
-
+            printDocumentationAndAnnotations()
             appendLine("companion object {")
             appendLine(properties.joinToString(separator = END_LINE + END_LINE) { it.toString().shift() })
             appendLine("}")
@@ -124,7 +133,9 @@ data class MethodSignature(
     var isInline: Boolean = false,
     var isOverride: Boolean = false,
     var isOperator: Boolean = false,
-    val name: String, val arg: MethodParameter?, val returnType: String
+    val name: String,
+    val arg: MethodParameter?,
+    val returnType: String
 ) {
     override fun toString(): String {
         return buildString {
@@ -148,28 +159,14 @@ data class MethodParameter(val name: String, val type: String) {
 }
 
 data class MethodDescription(
-    private var doc: String,
-    private val annotations: MutableList<String> = mutableListOf(),
+    override var doc: String?,
+    override val annotations: MutableList<String> = mutableListOf(),
     val signature: MethodSignature,
     var body: String? = null
-) {
-    fun addDoc(doc: String) {
-        this.doc += doc
-    }
-
-    fun addAnnotation(annotation: String) {
-        annotations += annotation
-    }
-
+) : AnnotatedAndDocumented() {
     override fun toString(): String {
         return buildString {
-            if (doc.isNotEmpty()) {
-                appendLine(doc.printAsDoc())
-            }
-
-            if (annotations.isNotEmpty()) {
-                appendLine(annotations.joinToString(separator = END_LINE) { "@$it" })
-            }
+            printDocumentationAndAnnotations()
             append(signature)
             append(body ?: "") // TODO multi/single line body
         }
@@ -177,22 +174,15 @@ data class MethodDescription(
 }
 
 data class PropertyDescription(
-    private val doc: String, private val annotations: MutableList<String> = mutableListOf(),
-    val name: String, val type: String, val value: String
-) {
-    fun addAnnotation(annotation: String) {
-        annotations += annotation
-    }
-
+    override var doc: String?,
+    override val annotations: MutableList<String> = mutableListOf(),
+    val name: String,
+    val type: String,
+    val value: String
+) : AnnotatedAndDocumented() {
     override fun toString(): String {
         return buildString {
-            if (doc.isNotEmpty()) {
-                appendLine(doc.printAsDoc())
-            }
-
-            if (annotations.isNotEmpty()) {
-                appendLine(annotations.joinToString(separator = END_LINE) { "@$it" })
-            }
+            printDocumentationAndAnnotations()
             append("public const val $name: $type = $value")
         }
     }
@@ -757,7 +747,7 @@ abstract class BaseGenerator {
 
     private fun generateEquals(thisKind: PrimitiveType): MethodDescription {
         return MethodDescription(
-            doc = "",
+            doc = null,
             annotations = mutableListOf("kotlin.internal.IntrinsicConstEvaluation"),
             signature = MethodSignature(
                 isOverride = true,
@@ -770,7 +760,7 @@ abstract class BaseGenerator {
 
     private fun generateToString(thisKind: PrimitiveType): MethodDescription {
         return MethodDescription(
-            doc = "",
+            doc = null,
             annotations = mutableListOf("kotlin.internal.IntrinsicConstEvaluation"),
             signature = MethodSignature(
                 isOverride = true,
@@ -988,7 +978,7 @@ class NativeGenerator : BaseGenerator() {
 
     override fun generateAdditionalMethods(thisKind: PrimitiveType): List<MethodDescription> {
         val hashCode = MethodDescription(
-            doc = "",
+            doc = null,
             signature = MethodSignature(
                 isOverride = true,
                 name = "hashCode",
@@ -1006,7 +996,7 @@ class NativeGenerator : BaseGenerator() {
         }
 
         val customEquals = MethodDescription(
-            doc = "",
+            doc = null,
             signature = MethodSignature(
                 name = "equals",
                 arg = MethodParameter("other", thisKind.capitalized),
@@ -1021,7 +1011,7 @@ class NativeGenerator : BaseGenerator() {
         }
 
         val bits = MethodDescription(
-            doc = "",
+            doc = null,
             signature = MethodSignature(
                 isExternal = true,
                 visibility = "internal",
