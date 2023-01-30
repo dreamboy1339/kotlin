@@ -31,7 +31,7 @@ class JsIrProgramFragment(val packageFqn: String) {
 class JsIrModule(
     val moduleName: String,
     val externalModuleName: String,
-    val fragments: List<JsIrProgramFragment>
+    val fragments: List<JsIrProgramFragment>,
 ) {
     fun makeModuleHeader(): JsIrModuleHeader {
         val nameBindings = mutableMapOf<String, String>()
@@ -94,8 +94,8 @@ class CrossModuleDependenciesResolver(
     private val headers: List<JsIrModuleHeader>
 ) {
     fun resolveCrossModuleDependencies(relativeRequirePath: Boolean): Map<JsIrModuleHeader, CrossModuleReferences> {
-        val headerToBuilder = headers.associateWith { JsIrModuleCrossModuleReferecenceBuilder(moduleKind, it, relativeRequirePath) }
-        val definitionModule = mutableMapOf<String, JsIrModuleCrossModuleReferecenceBuilder>()
+        val headerToBuilder = headers.associateWith { JsIrModuleCrossModuleReferenceBuilder(moduleKind, it, relativeRequirePath) }
+        val definitionModule = mutableMapOf<String, JsIrModuleCrossModuleReferenceBuilder>()
 
         val mainModuleHeader = headers.last()
         val otherModuleHeaders = headers.dropLast(1)
@@ -126,13 +126,15 @@ class CrossModuleDependenciesResolver(
             }
         }
 
-        return headers.associateWith { headerToBuilder[it]!!.buildCrossModuleRefs() }
+        return headers
+            .associateWith { headerToBuilder[it]!!.apply { buildExportNames() } }
+            .mapValues { it.value.buildCrossModuleRefs() }
     }
 }
 
-private class CrossModuleRef(val module: JsIrModuleCrossModuleReferecenceBuilder, val tag: String)
+private class CrossModuleRef(val module: JsIrModuleCrossModuleReferenceBuilder, val tag: String)
 
-private class JsIrModuleCrossModuleReferecenceBuilder(
+private class JsIrModuleCrossModuleReferenceBuilder(
     val moduleKind: ModuleKind,
     val header: JsIrModuleHeader,
     val relativeRequirePath: Boolean
@@ -143,13 +145,12 @@ private class JsIrModuleCrossModuleReferecenceBuilder(
 
     private lateinit var exportNames: Map<String, String> // tag -> index
 
-    private fun buildExportNames() {
+    fun buildExportNames() {
         var index = 0
         exportNames = exports.sorted().associateWith { index++.toJsIdentifier() }
     }
 
     fun buildCrossModuleRefs(): CrossModuleReferences {
-        buildExportNames()
         val importedModules = mutableMapOf<JsIrModuleHeader, JsImportedModule>()
 
         fun import(moduleHeader: JsIrModuleHeader): JsName {
@@ -168,10 +169,6 @@ private class JsIrModuleCrossModuleReferecenceBuilder(
 
         val resultImports = imports.associate { crossModuleRef ->
             val tag = crossModuleRef.tag
-            require(crossModuleRef.module::exportNames.isInitialized) {
-                // This situation appears in case of a dependent module redefine a symbol (function) from their dependency
-                "Cross module dependency resolution failed due to signature '$tag' redefinition"
-            }
             val exportedAs = crossModuleRef.module.exportNames[tag]!!
             val moduleName = import(crossModuleRef.module.header)
 

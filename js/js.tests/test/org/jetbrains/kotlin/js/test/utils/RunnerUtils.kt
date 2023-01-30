@@ -6,11 +6,11 @@
 package org.jetbrains.kotlin.js.test.utils
 
 import org.jetbrains.kotlin.ir.backend.js.transformers.irToJs.TranslationMode
+import org.jetbrains.kotlin.ir.backend.js.transformers.irToJs.extension
 import org.jetbrains.kotlin.js.JavaScript
 import org.jetbrains.kotlin.js.config.JSConfigurationKeys
 import org.jetbrains.kotlin.js.test.JsAdditionalSourceProvider
 import org.jetbrains.kotlin.js.test.converters.augmentWithModuleName
-import org.jetbrains.kotlin.js.test.converters.extension
 import org.jetbrains.kotlin.js.test.converters.kind
 import org.jetbrains.kotlin.js.test.handlers.JsBoxRunner.Companion.TEST_FUNCTION
 import org.jetbrains.kotlin.js.testOld.*
@@ -67,7 +67,7 @@ private fun extractJsFiles(
     return before to after
 }
 
-fun getAdditionalFilePathes(testServices: TestServices, mode: TranslationMode = TranslationMode.FULL_DEV): List<String> {
+fun getAdditionalFilePaths(testServices: TestServices, mode: TranslationMode = TranslationMode.FULL_DEV): List<String> {
     return getAdditionalFiles(testServices, mode, true).map { it.absolutePath }
 }
 
@@ -156,7 +156,7 @@ fun getAllFilesForRunner(
 
             val outputFile = getModeOutputFilePath(testServices, module, mode)
             val (inputJsFilesBefore, inputJsFilesAfter) = extractJsFiles(testServices, testServices.moduleStructure.modules, mode)
-            val additionalFiles = getAdditionalFilePathes(testServices, mode)
+            val additionalFiles = getAdditionalFilePaths(testServices, mode)
             val additionalMainFiles = getAdditionalMainFilePathes(testServices, mode)
 
             outputs.dependencies.forEach { (moduleId, _) ->
@@ -170,7 +170,7 @@ fun getAllFilesForRunner(
         return result
     } else {
         val (inputJsFilesBefore, inputJsFilesAfter) = extractJsFiles(testServices, testServices.moduleStructure.modules)
-        val additionalFiles = getAdditionalFilePathes(testServices)
+        val additionalFiles = getAdditionalFilePaths(testServices)
         val additionalMainFiles = getAdditionalMainFilePathes(testServices)
         // Old BE
         val outputDir = JsEnvironmentConfigurator.getJsArtifactsOutputDir(testServices)

@@ -105,7 +105,10 @@ object ModuleWrapperTranslation {
         val scope = program.scope
         val defineName = scope.declareName("define")
         val invocationArgs = listOf(
-            JsArrayLiteral(listOf(JsStringLiteral("exports")) + importedModules.map { JsStringLiteral(it.requireName) }),
+            JsArrayLiteral(
+                listOf(JsStringLiteral("exports")) +
+                        importedModules.map { JsStringLiteral(it.getRequireName()) }
+            ),
             function
         )
 
@@ -122,7 +125,7 @@ object ModuleWrapperTranslation {
         val moduleName = scope.declareName("module")
         val requireName = scope.declareName("require")
 
-        val invocationArgs = importedModules.map { JsInvocation(requireName.makeRef(), JsStringLiteral(it.requireName)) }
+        val invocationArgs = importedModules.map { JsInvocation(requireName.makeRef(), JsStringLiteral(it.getRequireName())) }
         val invocation = JsInvocation(function, listOf(JsNameRef("exports", moduleName.makeRef())) + invocationArgs)
         return listOf(invocation.makeStmt())
     }
@@ -130,7 +133,7 @@ object ModuleWrapperTranslation {
     private fun wrapEsModule(function: JsFunction, importedModules: List<JsImportedModule>): List<JsStatement> {
         val importStatements = importedModules.zip(function.parameters.drop(1)).map {
             JsImport(
-                it.first.externalName,
+                it.first.getRequireName(isEsm = true),
                 if (it.first.plainReference == null) {
                     JsImport.Target.All(alias = it.second.name)
                 } else {
