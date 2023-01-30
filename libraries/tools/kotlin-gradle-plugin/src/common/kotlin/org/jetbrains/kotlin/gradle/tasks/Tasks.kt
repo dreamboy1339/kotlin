@@ -10,13 +10,12 @@ import org.gradle.api.*
 import org.gradle.api.file.*
 import org.gradle.api.invocation.Gradle
 import org.gradle.api.logging.Logger
+import org.gradle.api.logging.Logging
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.Provider
 import org.gradle.api.provider.SetProperty
-import org.gradle.api.services.BuildService
-import org.gradle.api.services.BuildServiceParameters
 import org.gradle.api.specs.Spec
 import org.gradle.api.tasks.*
 import org.gradle.api.tasks.compile.AbstractCompile
@@ -73,7 +72,6 @@ import org.jetbrains.kotlin.utils.JsLibraryUtils
 import org.jetbrains.kotlin.utils.addToStdlib.cast
 import java.io.File
 import java.nio.file.Files.*
-import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 
 const val KOTLIN_BUILD_DIR_NAME = "kotlin"
@@ -237,6 +235,7 @@ abstract class AbstractKotlinCompile<T : CommonCompilerArguments> @Inject constr
     UsesIncrementalModuleInfoBuildService,
     UsesCompilerSystemPropertiesService,
     UsesVariantImplementationFactories,
+    UsesBuildFinishedListenerService,
     BaseKotlinCompile {
 
     init {
@@ -372,8 +371,25 @@ abstract class AbstractKotlinCompile<T : CommonCompilerArguments> @Inject constr
     @get:Internal
     internal abstract val taskOutputsBackupExcludes: SetProperty<File>
 
+    private fun notifyUserAboutExperimentalICOptimizations() {
+        if (!preciseCompilationResultsBackup.get() && !keepIncrementalCompilationCachesInMemory.get()) {
+            return
+        }
+        val key = "experimental-ic-optimizations"
+        buildFinishedListenerService.get().onCloseOnceByKey(key) {
+            Logging.getLogger(key).warn(
+                """
+                
+                The build has experimental Kotlin incremental compilation optimizations enabled.
+                If you notice incorrect compilation results after enabling it, please file a bug report at https://kotl.in/issue
+                """.trimIndent()
+            )
+        }
+    }
+
     @TaskAction
     fun execute(inputChanges: InputChanges) {
+        notifyUserAboutExperimentalICOptimizations()
         val buildMetrics = metrics.get()
         buildMetrics.addTimeMetric(BuildPerformanceMetric.START_TASK_ACTION_EXECUTION)
         buildMetrics.measure(BuildTime.OUT_OF_WORKER_TASK_ACTION) {
