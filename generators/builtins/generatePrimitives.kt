@@ -84,7 +84,7 @@ data class FileDescription(
                 appendLine()
             }
 
-            appendLine(classes.joinToString(separator = END_LINE))
+            append(classes.joinToString(separator = END_LINE))
         }
     }
 }
