@@ -496,7 +496,7 @@ abstract class BaseGenerator {
             val sizeSince = if (thisKind.isFloatingPoint) "1.4" else "1.3"
             this += PropertyDescription(
                 doc = "The number of bytes used to represent an instance of $className in a binary form.",
-                mutableListOf("SinceKotlin(\"$sizeSince\")"),
+                annotations = mutableListOf("SinceKotlin(\"$sizeSince\")"),
                 name = "SIZE_BYTES",
                 type = "Int",
                 value = thisKind.byteSize.toString()
@@ -504,7 +504,7 @@ abstract class BaseGenerator {
 
             this += PropertyDescription(
                 doc = "The number of bits used to represent an instance of $className in a binary form.",
-                mutableListOf("SinceKotlin(\"$sizeSince\")"),
+                annotations = mutableListOf("SinceKotlin(\"$sizeSince\")"),
                 name = "SIZE_BITS",
                 type = "Int",
                 value = thisKind.bitSize.toString()
@@ -598,10 +598,7 @@ abstract class BaseGenerator {
     private fun generateRangeTo(thisKind: PrimitiveType): List<MethodDescription> {
         return buildList {
             for (otherKind in PrimitiveType.onlyNumeric) {
-                val returnType = maxByDomainCapacity(
-                    maxByDomainCapacity(thisKind, otherKind),
-                    PrimitiveType.INT
-                )
+                val returnType = maxByDomainCapacity(maxByDomainCapacity(thisKind, otherKind), PrimitiveType.INT)
 
                 if (returnType == PrimitiveType.DOUBLE || returnType == PrimitiveType.FLOAT) {
                     continue
@@ -623,10 +620,7 @@ abstract class BaseGenerator {
     private fun generateRangeUntil(thisKind: PrimitiveType): List<MethodDescription> {
         return buildList {
             for (otherKind in PrimitiveType.onlyNumeric) {
-                val returnType = maxByDomainCapacity(
-                    maxByDomainCapacity(thisKind, otherKind),
-                    PrimitiveType.INT
-                )
+                val returnType = maxByDomainCapacity(maxByDomainCapacity(thisKind, otherKind), PrimitiveType.INT)
 
                 if (returnType == PrimitiveType.DOUBLE || returnType == PrimitiveType.FLOAT) {
                     continue
