@@ -3,9 +3,11 @@
  * Use of this source code is governed by the Apache 2.0 license that can be found in the license/LICENSE.txt file.
  */
 
+package org.jetbrains.kotlin.generators.builtins.numbers
+
 import org.jetbrains.kotlin.generators.builtins.PrimitiveType
 import org.jetbrains.kotlin.generators.builtins.PrimitiveType.Companion.floatingPoint
-import org.jetbrains.kotlin.generators.builtins.generateBuiltIns.BUILT_INS_NATIVE_DIR
+import org.jetbrains.kotlin.generators.builtins.generateBuiltIns.BuiltInsGenerator
 import java.io.File
 import java.io.PrintWriter
 import java.util.*
@@ -197,7 +199,7 @@ data class PropertyDescription(
     }
 }
 
-abstract class BaseGenerator {
+abstract class BasePrimitivesGenerator(private val writer: PrintWriter) : BuiltInsGenerator {
     companion object {
         internal val binaryOperators: List<String> = listOf(
             "plus",
@@ -259,6 +261,15 @@ abstract class BaseGenerator {
                 
                 The result is either zero or has the same sign as the _dividend_ and has the absolute value less than the absolute value of the divisor.
                 """.trimIndent()
+            }
+            "mod" -> {
+                """
+                Calculates the remainder of flooring division of this value (dividend) by the other value (divisor).
+
+                The result is either zero or has the same sign as the _divisor_ and has the absolute value less than the absolute value of the divisor.
+                """.trimIndent() + if (operand1.isFloatingPoint)
+                    "\n\n" + "If the result cannot be represented exactly, it is rounded to the nearest representable number. In this case the absolute value of the result can be less than or _equal to_ the absolute value of the divisor."
+                else ""
             }
             else -> error("No documentation for operator $operator")
         }
@@ -371,6 +382,16 @@ abstract class BaseGenerator {
             """.trimIndent()
             }
         }
+
+        private fun maxByDomainCapacity(type1: PrimitiveType, type2: PrimitiveType): PrimitiveType {
+            return if (type1.ordinal > type2.ordinal) type1 else type2
+        }
+
+        fun getOperatorReturnType(kind1: PrimitiveType, kind2: PrimitiveType): PrimitiveType {
+            require(kind1 != PrimitiveType.BOOLEAN) { "kind1 must not be BOOLEAN" }
+            require(kind2 != PrimitiveType.BOOLEAN) { "kind2 must not be BOOLEAN" }
+            return maxByDomainCapacity(maxByDomainCapacity(kind1, kind2), PrimitiveType.INT)
+        }
     }
 
     private val typeDescriptions: Map<PrimitiveType, String> = mapOf(
@@ -393,8 +414,8 @@ abstract class BaseGenerator {
         else -> throw IllegalArgumentException("type: $type")
     }
 
-    fun generate(): String {
-        return FileDescription(classes = generateClasses()).apply { this.modifyGeneratedFile() }.toString()
+    override fun generate() {
+        writer.print(FileDescription(classes = generateClasses()).apply { this.modifyGeneratedFile() }.toString())
     }
 
     private fun generateClasses(): List<ClassDescription> {
@@ -789,26 +810,15 @@ abstract class BaseGenerator {
     open fun MethodDescription.modifyGeneratedEquals(thisKind: PrimitiveType) {}
     open fun MethodDescription.modifyGeneratedToString(thisKind: PrimitiveType) {}
     open fun generateAdditionalMethods(thisKind: PrimitiveType): List<MethodDescription> = emptyList()
-
-    // --- Utils ---
-    private fun maxByDomainCapacity(type1: PrimitiveType, type2: PrimitiveType): PrimitiveType {
-        return if (type1.ordinal > type2.ordinal) type1 else type2
-    }
-
-    private fun getOperatorReturnType(kind1: PrimitiveType, kind2: PrimitiveType): PrimitiveType {
-        require(kind1 != PrimitiveType.BOOLEAN) { "kind1 must not be BOOLEAN" }
-        require(kind2 != PrimitiveType.BOOLEAN) { "kind2 must not be BOOLEAN" }
-        return maxByDomainCapacity(maxByDomainCapacity(kind1, kind2), PrimitiveType.INT)
-    }
 }
 
-class JvmGenerator : BaseGenerator() {
+class JvmPrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(writer) {
     override fun ClassDescription.modifyGeneratedClass(thisKind: PrimitiveType) {
         this.addDoc("On the JVM, non-nullable values of this type are represented as values of the primitive type `${thisKind.name.lowercase()}`.")
     }
 }
 
-class NativeGenerator : BaseGenerator() {
+class NativePrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(writer) {
     override fun FileDescription.modifyGeneratedFile() {
         this.addSuppress("OVERRIDE_BY_INLINE")
         this.addSuppress("NOTHING_TO_INLINE")
@@ -1055,19 +1065,5 @@ class NativeGenerator : BaseGenerator() {
 
             return ""
         }
-    }
-}
-
-fun main() {
-    val primitivesFile = File(BUILT_INS_NATIVE_DIR, "kotlin/Primitives_new.kt")
-    primitivesFile.parentFile?.mkdirs()
-    PrintWriter(primitivesFile).use {
-        it.print(JvmGenerator().generate())
-    }
-
-    val nativePrimitivesFile = File("kotlin-native/runtime/src/main/kotlin/kotlin/Primitives_new_native.kt")
-    nativePrimitivesFile.parentFile?.mkdirs()
-    PrintWriter(nativePrimitivesFile).use {
-        it.print(NativeGenerator().generate())
     }
 }

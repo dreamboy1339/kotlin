@@ -9,7 +9,7 @@ import org.jetbrains.kotlin.generators.builtins.PrimitiveType
 import org.jetbrains.kotlin.generators.builtins.UnsignedType
 import org.jetbrains.kotlin.generators.builtins.convert
 import org.jetbrains.kotlin.generators.builtins.generateBuiltIns.BuiltInsSourceGenerator
-import org.jetbrains.kotlin.generators.builtins.numbers.GeneratePrimitives
+import org.jetbrains.kotlin.generators.builtins.numbers.BasePrimitivesGenerator
 import org.jetbrains.kotlin.generators.builtins.printDoc
 import java.io.File
 import java.io.PrintWriter
@@ -55,7 +55,7 @@ class UnsignedTypeGenerator(val type: UnsignedType, out: PrintWriter) : BuiltIns
                 For unsigned types, the remainders of flooring division and truncating division are the same.
                 """.trimIndent()
         }
-        else -> GeneratePrimitives.binaryOperatorDoc(operator, operand1.asSigned, operand2.asSigned)
+        else -> BasePrimitivesGenerator.binaryOperatorDoc(operator, operand1.asSigned, operand2.asSigned)
     }
 
     override fun generateBody() {
@@ -146,7 +146,7 @@ class UnsignedTypeGenerator(val type: UnsignedType, out: PrintWriter) : BuiltIns
     }
 
     private fun generateBinaryOperators() {
-        for (name in GeneratePrimitives.binaryOperators) {
+        for (name in BasePrimitivesGenerator.binaryOperators) {
             generateOperator(name)
         }
         generateFloorDivMod("floorDiv")
@@ -203,7 +203,7 @@ class UnsignedTypeGenerator(val type: UnsignedType, out: PrintWriter) : BuiltIns
 
     private fun generateUnaryOperators() {
         for (name in listOf("inc", "dec")) {
-            out.println(GeneratePrimitives.incDecOperatorsDoc(name).replaceIndent("    "))
+            out.printDoc(BasePrimitivesGenerator.incDecOperatorsDoc(name), "    ")
             out.println("    @kotlin.internal.InlineOnly")
             out.println("    public inline operator fun $name(): $className = $className(data.$name())")
             out.println()
@@ -240,13 +240,9 @@ class UnsignedTypeGenerator(val type: UnsignedType, out: PrintWriter) : BuiltIns
     private fun generateBitShiftOperators() {
 
         fun generateShiftOperator(name: String, implementation: String = name) {
-            val doc = GeneratePrimitives.shiftOperators[implementation]!!
-            val detail = GeneratePrimitives.shiftOperatorsDocDetail(type.asSigned)
-            out.println("    /**")
-            out.println("     * $doc")
-            out.println("     *")
-            out.println(detail.replaceIndent("     "))
-            out.println("     */")
+            val doc = BasePrimitivesGenerator.shiftOperators[implementation]!!
+            val detail = BasePrimitivesGenerator.shiftOperatorsDocDetail(type.asSigned)
+            out.printDoc(doc + System.lineSeparator() + System.lineSeparator() + detail, "    ")
             out.println("    @kotlin.internal.InlineOnly")
             out.println("    public inline infix fun $name(bitCount: Int): $className = $className(data $implementation bitCount)")
             out.println()
@@ -257,7 +253,7 @@ class UnsignedTypeGenerator(val type: UnsignedType, out: PrintWriter) : BuiltIns
     }
 
     private fun generateBitwiseOperators() {
-        for ((name, doc) in GeneratePrimitives.bitwiseOperators) {
+        for ((name, doc) in BasePrimitivesGenerator.bitwiseOperators) {
             out.println("    /** $doc */")
             out.println("    @kotlin.internal.InlineOnly")
             out.println("    public inline infix fun $name(other: $className): $className = $className(this.data $name other.data)")
