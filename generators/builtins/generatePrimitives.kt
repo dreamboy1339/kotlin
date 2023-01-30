@@ -123,7 +123,7 @@ data class MethodSignature(
     var isInfix: Boolean = false,
     var isInline: Boolean = false,
     var isOverride: Boolean = false,
-    var isOperator: Boolean = true,
+    var isOperator: Boolean = false,
     val name: String, val arg: MethodParameter?, val returnType: String
 ) {
     override fun toString(): String {
@@ -384,7 +384,7 @@ abstract class BaseGenerator {
         PrimitiveType.CHAR to "16-bit Unicode character"
     )
 
-    private fun primitiveConstants(type: PrimitiveType): List<Any> = when (type) {
+    open fun primitiveConstants(type: PrimitiveType): List<Any> = when (type) {
         PrimitiveType.INT -> listOf(java.lang.Integer.MIN_VALUE, java.lang.Integer.MAX_VALUE)
         PrimitiveType.BYTE -> listOf(java.lang.Byte.MIN_VALUE, java.lang.Byte.MAX_VALUE)
         PrimitiveType.SHORT -> listOf(java.lang.Short.MIN_VALUE, java.lang.Short.MAX_VALUE)
@@ -494,9 +494,9 @@ abstract class BaseGenerator {
                     }
 
                     this.addAll(generateConversions(thisKind))
-                    this += generateEquals()
-                    this += generateToString()
-                    this.addAll(generateAdditionalMethods())
+                    this += generateEquals(thisKind)
+                    this += generateToString(thisKind)
+                    this.addAll(generateAdditionalMethods(thisKind))
                 }
 
                 properties.forEach { it.modifyGeneratedCompanionObjectProperty(thisKind) }
@@ -755,7 +755,7 @@ abstract class BaseGenerator {
         }
     }
 
-    private fun generateEquals(): MethodDescription {
+    private fun generateEquals(thisKind: PrimitiveType): MethodDescription {
         return MethodDescription(
             doc = "",
             annotations = mutableListOf("kotlin.internal.IntrinsicConstEvaluation"),
@@ -766,10 +766,10 @@ abstract class BaseGenerator {
                 arg = MethodParameter("other", "Any?"),
                 returnType = "Boolean"
             )
-        )
+        ).apply { this.modifyGeneratedEquals(thisKind) }
     }
 
-    private fun generateToString(): MethodDescription {
+    private fun generateToString(thisKind: PrimitiveType): MethodDescription {
         return MethodDescription(
             doc = "",
             annotations = mutableListOf("kotlin.internal.IntrinsicConstEvaluation"),
@@ -780,7 +780,7 @@ abstract class BaseGenerator {
                 arg = null,
                 returnType = "String"
             )
-        )
+        ).apply { modifyGeneratedToString(thisKind) }
     }
 
     open fun FileDescription.modifyGeneratedFile() {}
@@ -795,7 +795,9 @@ abstract class BaseGenerator {
     open fun MethodDescription.modifyGeneratedBitShiftOperators(thisKind: PrimitiveType) {}
     open fun MethodDescription.modifyGeneratedBitwiseOperators(thisKind: PrimitiveType) {}
     open fun MethodDescription.modifyGeneratedConversions(thisKind: PrimitiveType) {}
-    open fun generateAdditionalMethods(): List<MethodDescription> = emptyList()
+    open fun MethodDescription.modifyGeneratedEquals(thisKind: PrimitiveType) {}
+    open fun MethodDescription.modifyGeneratedToString(thisKind: PrimitiveType) {}
+    open fun generateAdditionalMethods(thisKind: PrimitiveType): List<MethodDescription> = emptyList()
 
     // --- Utils ---
     private fun maxByDomainCapacity(type1: PrimitiveType, type2: PrimitiveType): PrimitiveType {
@@ -832,6 +834,16 @@ class NativeGenerator : BaseGenerator() {
         }
     }
 
+    override fun primitiveConstants(type: PrimitiveType): List<Any> {
+        return when (type) {
+            PrimitiveType.FLOAT -> listOf(
+                String.format("%.17eF", java.lang.Float.MIN_VALUE), String.format("%.17eF", java.lang.Float.MAX_VALUE),
+                "1.0F/0.0F", "-1.0F/0.0F", "-(0.0F/0.0F)"
+            )
+            else -> super.primitiveConstants(type)
+        }
+    }
+
     override fun PropertyDescription.modifyGeneratedCompanionObjectProperty(thisKind: PrimitiveType) {
         if (this.name in setOf("POSITIVE_INFINITY", "NEGATIVE_INFINITY", "NaN")) {
             this.addAnnotation("Suppress(\"DIVISION_BY_ZERO\")")
@@ -840,10 +852,27 @@ class NativeGenerator : BaseGenerator() {
 
     override fun MethodDescription.modifyGeneratedCompareTo(thisKind: PrimitiveType, otherKind: PrimitiveType) {
         if (otherKind == thisKind) {
-            addAnnotation("TypedIntrinsic(IntrinsicType.SIGNED_COMPARE_TO)")
-            this.signature.isExternal = true
+            if (thisKind in floatingPoint) {
+                val argName = this.signature.arg!!.name
+                this.body = """
+                    {
+                        // if any of values in NaN both comparisons return false
+                        if (this > $argName) return 1
+                        if (this < $argName) return -1
+                
+                        val thisBits = this.toBits()
+                        val otherBits = $argName.toBits()
+                
+                        // Canonical NaN bits representation higher than any other bit represent value
+                        return thisBits.compareTo(otherBits)
+                    }
+                """.trimIndent()
+            } else {
+                addAnnotation("TypedIntrinsic(IntrinsicType.SIGNED_COMPARE_TO)")
+                this.signature.isExternal = true
+            }
         } else {
-            this.signature.isInline = true
+            this.signature.isInline = thisKind !in floatingPoint
             val thisCasted = "this" + thisKind.castToIfNecessary(otherKind)
             val otherCasted = this.signature.arg!!.name + otherKind.castToIfNecessary(thisKind)
             this.body = " = $END_LINE\t$thisCasted.compareTo($otherCasted)"
@@ -874,7 +903,9 @@ class NativeGenerator : BaseGenerator() {
     }
 
     override fun MethodDescription.modifyGeneratedUnaryOperation(thisKind: PrimitiveType) {
-        if (this.signature.name in setOf("inc", "dec") || thisKind == PrimitiveType.INT || thisKind in floatingPoint) {
+        if (this.signature.name in setOf("inc", "dec") || thisKind == PrimitiveType.INT ||
+            thisKind in floatingPoint || (this.signature.name == "unaryMinus" && thisKind == PrimitiveType.LONG)
+        ) {
             this.signature.isExternal = true
             this.addAnnotation("TypedIntrinsic(IntrinsicType.${this.signature.name.toNativeOperator()})")
         } else {
@@ -890,7 +921,7 @@ class NativeGenerator : BaseGenerator() {
         val rangeType = PrimitiveType.valueOf(this.signature.returnType.replace("Range", "").uppercase())
         val thisCasted = "this" + thisKind.castToIfNecessary(rangeType)
         val otherCasted = this.signature.arg!!.name + this.signature.arg.getTypeAsPrimitive().castToIfNecessary(rangeType)
-        body = " {${END_LINE}return ${this.signature.returnType}($thisCasted, $otherCasted)${END_LINE}}"
+        body = " {$END_LINE\treturn ${this.signature.returnType}($thisCasted, $otherCasted)$END_LINE}"
     }
 
     override fun MethodDescription.modifyGeneratedRangeUntil(thisKind: PrimitiveType) {
@@ -935,6 +966,80 @@ class NativeGenerator : BaseGenerator() {
             } else if (thisKind.byteSize < returnTypeAsPrimitive.byteSize) {
                 this.addAnnotation("TypedIntrinsic(IntrinsicType.FLOAT_EXTEND)")
             }
+        }
+    }
+
+    override fun MethodDescription.modifyGeneratedEquals(thisKind: PrimitiveType) {
+        val argName = this.signature.arg!!.name
+        val additionalCheck = if (thisKind in floatingPoint) {
+            "this.equals(other)"
+        } else {
+            "kotlin.native.internal.areEqualByValue(this, $argName)"
+        }
+        this.body = " =$END_LINE\t\t$argName is ${thisKind.capitalized} && $additionalCheck"
+    }
+
+    override fun MethodDescription.modifyGeneratedToString(thisKind: PrimitiveType) {
+        if (thisKind in floatingPoint) {
+            this.body = " = NumberConverter.convert(this)"
+        } else {
+            this.signature.isExternal = true
+            this.addAnnotation("GCUnsafeCall(\"Kotlin_${thisKind.capitalized}_toString\")")
+        }
+    }
+
+    override fun generateAdditionalMethods(thisKind: PrimitiveType): List<MethodDescription> {
+        val hashCode = MethodDescription(
+            doc = "",
+            signature = MethodSignature(
+                isOverride = true,
+                name = "hashCode",
+                arg = null,
+                returnType = PrimitiveType.INT.capitalized
+            )
+        ).apply {
+            val calculation = when (thisKind) {
+                PrimitiveType.LONG -> "((this ushr 32) xor this).toInt()"
+                PrimitiveType.FLOAT -> "toBits()"
+                PrimitiveType.DOUBLE -> "toBits().hashCode()"
+                else -> "this" + thisKind.castToIfNecessary(PrimitiveType.INT)
+            }
+            body = " {$END_LINE\treturn $calculation$END_LINE}"
+        }
+
+        val customEquals = MethodDescription(
+            doc = "",
+            signature = MethodSignature(
+                name = "equals",
+                arg = MethodParameter("other", thisKind.capitalized),
+                returnType = PrimitiveType.BOOLEAN.capitalized
+            )
+        ).apply {
+            body = if (thisKind in floatingPoint) {
+                " = toBits() == other.toBits()"
+            } else {
+                " = kotlin.native.internal.areEqualByValue(this, other)"
+            }
+        }
+
+        val bits = MethodDescription(
+            doc = "",
+            signature = MethodSignature(
+                isExternal = true,
+                visibility = "internal",
+                name = "bits",
+                arg = null,
+                returnType = if (thisKind == PrimitiveType.FLOAT) PrimitiveType.INT.capitalized else PrimitiveType.LONG.capitalized
+            )
+        ).apply {
+            this.addAnnotation("TypedIntrinsic(IntrinsicType.REINTERPRET)")
+            this.addAnnotation("PublishedApi")
+        }
+
+        return if (thisKind in floatingPoint) {
+            listOf(customEquals, hashCode, bits)
+        } else {
+            listOf(customEquals, hashCode)
         }
     }
 
