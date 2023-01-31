@@ -1342,7 +1342,7 @@ public class JsToStringGenerationVisitor extends JsVisitor {
             blockOpen();
             List<JsExport.Element> elements = ((JsExport.Subject.Elements) subject).getElements();
             for (JsExport.Element element : elements) {
-                nameDef(element.getName());
+                visitNameRef(element.getName());
                 JsName alias = element.getAlias();
                 if (alias != null) {
                     p.print(" as ");
@@ -1385,7 +1385,7 @@ public class JsToStringGenerationVisitor extends JsVisitor {
                 space();
 
             for (JsImport.Element element : elements) {
-                nameDef(element.getName());
+                visitNameRef(element.getName());
                 JsName alias = element.getAlias();
                 if (alias != null) {
                     p.print(" as ");

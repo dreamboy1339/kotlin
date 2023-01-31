@@ -9,8 +9,6 @@ class JsImport(
     val module: String,
     val target: Target,
 ) : SourceInfoAwareJsNode(), JsStatement {
-    constructor(module: String, elements: MutableList<Element> = mutableListOf()) : this(module, Target.Elements(elements))
-
     val elements: MutableList<Element>
         get() = (target as Target.Elements).elements
 
@@ -26,17 +24,20 @@ class JsImport(
     }
 
     class Element(
-        val name: JsName,
+        val name: JsNameRef,
         val alias: JsName?
-    ) {
-        constructor(name: String, alias: String?) : this(JsName(name, false), alias?.let { JsName(it, false) })
-    }
+    )
 
     override fun accept(visitor: JsVisitor) {
         visitor.visitImport(this)
     }
 
     override fun acceptChildren(visitor: JsVisitor) {
+        if (target is Target.Elements) {
+            target.elements.forEach {
+                visitor.accept(it.name)
+            }
+        }
     }
 
     override fun deepCopy(): JsStatement =

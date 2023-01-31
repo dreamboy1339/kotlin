@@ -70,7 +70,7 @@ class Merger(
             if (isEsModules) {
                 val exportedElements = crossModuleReferences.exports.entries.map { (tag, hash) ->
                     val internalName = nameMap[tag] ?: error("Missing name for declaration '$tag'")
-                    JsExport.Element(internalName, JsName(hash, false))
+                    JsExport.Element(internalName.makeRef(), JsName(hash, false))
                 }
 
                 additionalExports += JsExport(JsExport.Subject.Elements(exportedElements))
@@ -143,7 +143,7 @@ class Merger(
             val exportedElements = currentModuleExportStatements.takeIf { it.isNotEmpty() }
                 ?.asSequence()
                 ?.flatMap { (it.subject as JsExport.Subject.Elements).elements }
-                ?.distinctBy { (it.alias ?: it.name).ident }
+                ?.distinctBy { it.alias?.ident ?: it.name.ident }
                 ?.map { if (it.name.ident == it.alias?.ident) JsExport.Element(it.name, null) else it }
                 ?.toList()
 
@@ -176,7 +176,7 @@ class Merger(
     private fun transitiveJsExport(): List<JsStatement> {
         return if (isEsModules) {
             crossModuleReferences.transitiveJsExportFrom.map {
-                JsExport(JsExport.Subject.All, it.externalName)
+                JsExport(JsExport.Subject.All, it.getRequireName())
             }
         } else {
             val internalModuleName = ReservedJsNames.makeInternalModuleName()

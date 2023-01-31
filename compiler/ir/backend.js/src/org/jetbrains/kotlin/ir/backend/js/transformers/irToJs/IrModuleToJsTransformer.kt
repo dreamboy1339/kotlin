@@ -233,14 +233,17 @@ class IrModuleToJsTransformer(
     }
 
     private fun generateJsIrProgramPerModule(exportData: List<IrAndExportedDeclarations>, mode: TranslationMode): JsIrProgram {
+        val mainModule = exportData.last()
+
         return JsIrProgram(
             exportData.map { data ->
                 JsIrModule(
                     data.fragment.safeName,
-                    moduleFragmentToNameMapper.getExternalNameFor(data.fragment, mode.granularity),
+                    moduleFragmentToNameMapper.getExternalNameFor(data.fragment),
                     data.files.map {
                         generateProgramFragment(it, mode.minimizedMemberNames)
-                    }
+                    },
+                    mainModuleName.takeIf { moduleKind != ModuleKind.ES && data != mainModule }
                 )
             }
         )
@@ -250,22 +253,31 @@ class IrModuleToJsTransformer(
         return JsIrProgram(
             exportData
                 .flatMap { module ->
-                    val fileModules = module.files
+                    val modulesPerFile = module.files
                         .mapNotNull {
                             runIf(!it.file.couldBeSkipped()) {
                                 JsIrModule(
                                     moduleFragmentToNameMapper.getSafeNameFor(it.file),
                                     moduleFragmentToNameMapper.getExternalNameFor(it.file, mode.granularity),
-                                    listOf(generateProgramFragment(it, mode.minimizedMemberNames))
+                                    listOf(generateProgramFragment(it, mode.minimizedMemberNames)),
+                                    reexportedInModuleWithName = module.fragment.safeName
                                 )
                             }
                         }
 
-                    fileModules + JsIrModule(
-                        module.fragment.safeName,
-                        module.fragment.safeName,
-                        listOf(generateProgramFragmentForReexport(module))
-                    )
+                    val reexportModule = if (modulesPerFile.isEmpty()) {
+                        emptyList()
+                    } else {
+                        listOf(
+                            JsIrModule(
+                                module.fragment.safeName,
+                                moduleFragmentToNameMapper.getExternalNameFor(module.fragment),
+                                listOf(JsIrProgramFragment(""))
+                            )
+                        )
+                    }
+
+                    modulesPerFile + reexportModule
                 }
         )
     }
