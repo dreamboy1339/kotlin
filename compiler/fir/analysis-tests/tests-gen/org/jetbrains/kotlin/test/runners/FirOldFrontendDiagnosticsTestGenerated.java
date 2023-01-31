@@ -34737,6 +34737,18 @@ public class FirOldFrontendDiagnosticsTestGenerated extends AbstractFirDiagnosti
             }
 
             @Test
+            @TestMetadata("moreSpecificProtected.kt")
+            public void testMoreSpecificProtected() throws Exception {
+                runTest("compiler/testData/diagnostics/tests/visibility/moreSpecificProtected.kt");
+            }
+
+            @Test
+            @TestMetadata("moreSpecificProtectedSimple.kt")
+            public void testMoreSpecificProtectedSimple() throws Exception {
+                runTest("compiler/testData/diagnostics/tests/visibility/moreSpecificProtectedSimple.kt");
+            }
+
+            @Test
             @TestMetadata("notOverridingInternal.kt")
             public void testNotOverridingInternal() throws Exception {
                 runTest("compiler/testData/diagnostics/tests/visibility/notOverridingInternal.kt");
