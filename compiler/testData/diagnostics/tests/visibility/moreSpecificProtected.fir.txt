@@ -101,12 +101,12 @@ FILE: moreSpecificProtected.fir.kt
             when (R|<local>/a|) {
                 ($subj$ is R|C|) ->  {
                     R|<local>/a|.R|/C.fromC|
-                    R|<local>/a|.R|/A.foo|(R|<local>/d|, R|<local>/d|).R|/checkType|<R|M3|>(checkType@fun R|CheckTypeInv<M3>|.<anonymous>(): R|kotlin/Unit| <inline=NoInline>  {
-                        this@R|special/anonymous|.R|/_<None of the following candidates is applicable because of receiver type mismatch: [/_]>#|<R|M2Sub|>()
+                    R|<local>/a|.R|/B.foo|(R|<local>/d|, R|<local>/d|).R|/checkType|<R|M2Sub|>(checkType@fun R|CheckTypeInv<M2Sub>|.<anonymous>(): R|kotlin/Unit| <inline=NoInline>  {
+                        this@R|special/anonymous|.R|/_|<R|M2Sub|>()
                     }
                     )
-                    R|<local>/a|.R|/A.baz|(R|<local>/d|, R|<local>/d|).R|/checkType|<R|M5|>(checkType@fun R|CheckTypeInv<M5>|.<anonymous>(): R|kotlin/Unit| <inline=NoInline>  {
-                        this@R|special/anonymous|.R|/_<None of the following candidates is applicable because of receiver type mismatch: [/_]>#|<R|M6|>()
+                    R|<local>/a|.R|/C.baz|(R|<local>/d|, R|<local>/d|).R|/checkType|<R|M6|>(checkType@fun R|CheckTypeInv<M6>|.<anonymous>(): R|kotlin/Unit| <inline=NoInline>  {
+                        this@R|special/anonymous|.R|/_|<R|M6|>()
                     }
                     )
                 }
@@ -116,7 +116,7 @@ FILE: moreSpecificProtected.fir.kt
                         this@R|special/anonymous|.R|/_|<R|M3|>()
                     }
                     )
-                    R|<local>/a|.<Ambiguity: baz, [/A.baz, /A.baz, /B.baz]>#(R|<local>/d|, R|<local>/d|).R|/checkType<None of the following candidates is applicable because of receiver type mismatch: [/checkType]>#|<R|M5Sub|>(checkType@fun R|CheckTypeInv<M5Sub>|.<anonymous>(): R|kotlin/Unit| <inline=Unknown>  {
+                    R|<local>/a|.R|/B.baz|(R|<local>/d|, R|<local>/d|).R|/checkType|<R|M5Sub|>(checkType@fun R|CheckTypeInv<M5Sub>|.<anonymous>(): R|kotlin/Unit| <inline=NoInline>  {
                         this@R|special/anonymous|.R|/_|<R|M5Sub|>()
                     }
                     )

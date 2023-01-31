@@ -34753,6 +34753,12 @@ public class DiagnosisCompilerTestFE10TestdataTestGenerated extends AbstractDiag
             public void testProtectedVisibilityAndSmartcast_overrideSameType() throws Exception {
                 runTest("compiler/testData/diagnostics/tests/visibility/protectedVisibilityAndSmartcast_overrideSameType.kt");
             }
+
+            @Test
+            @TestMetadata("smartCastAndSuppressedVisibility.kt")
+            public void testSmartCastAndSuppressedVisibility() throws Exception {
+                runTest("compiler/testData/diagnostics/tests/visibility/smartCastAndSuppressedVisibility.kt");
+            }
         }
 
         @Nested

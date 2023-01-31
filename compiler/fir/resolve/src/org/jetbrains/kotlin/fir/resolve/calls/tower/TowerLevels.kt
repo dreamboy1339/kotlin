@@ -9,9 +9,6 @@ import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.fakeElement
 import org.jetbrains.kotlin.fir.*
-import org.jetbrains.kotlin.fir.declarations.ContextReceiverGroup
-import org.jetbrains.kotlin.fir.declarations.FirConstructor
-import org.jetbrains.kotlin.fir.declarations.getAnnotationByClassId
 import org.jetbrains.kotlin.fir.declarations.*
 import org.jetbrains.kotlin.fir.declarations.utils.isInner
 import org.jetbrains.kotlin.fir.expressions.FirSmartCastExpression
@@ -87,9 +84,7 @@ class MemberScopeTowerLevel(
         val scope = dispatchReceiverValue.scope(session, scopeSession) ?: return ProcessResult.SCOPE_EMPTY
         var (empty, candidates) = scope.collectCandidates(processScopeMembers)
 
-        val scopeWithoutSmartcast = (dispatchReceiverValue.receiverExpression as? FirSmartCastExpression)
-            ?.takeIf { it.isStable }
-            ?.originalExpression?.typeRef
+        val scopeWithoutSmartcast = getOriginalReceiverExpressionIfStableSmartCast()?.typeRef
             ?.coneType
             ?.scope(
                 session,
@@ -195,16 +190,29 @@ class MemberScopeTowerLevel(
         for (candidateWithScope in candidates) {
             val (candidate, scope) = candidateWithScope
             if (candidate.hasConsistentExtensionReceiver(givenExtensionReceiverOptions)) {
+                val isFromOriginalTypeInPresenceOfSmartCast = isFromSmartCast != null && !isFromSmartCast.getValue(candidateWithScope)
+
+                val dispatchReceiverToUse = when {
+                    isFromOriginalTypeInPresenceOfSmartCast ->
+                        getOriginalReceiverExpressionIfStableSmartCast()?.let(::ExpressionReceiverValue)
+                    else -> dispatchReceiverValue
+                }
+
                 output.consumeCandidate(
                     candidate,
-                    dispatchReceiverValue,
+                    dispatchReceiverToUse,
                     givenExtensionReceiverOptions,
                     scope,
-                    isFromOriginalTypeInPresenceOfSmartCast = isFromSmartCast != null && !isFromSmartCast.getValue(candidateWithScope)
+                    isFromOriginalTypeInPresenceOfSmartCast = isFromOriginalTypeInPresenceOfSmartCast
                 )
             }
         }
     }
+
+    private fun getOriginalReceiverExpressionIfStableSmartCast() =
+        (dispatchReceiverValue.receiverExpression as? FirSmartCastExpression)
+            ?.takeIf { it.isStable }
+            ?.originalExpression
 
     override fun processFunctionsByName(
         info: CallInfo,

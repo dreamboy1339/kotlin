@@ -58,10 +58,10 @@ open class B : A() {
                 // Make sure smart cast works
                 a.fromC
                 // The same logic as for `c.foo`
-                a.foo(d, d) checkType { <!UNRESOLVED_REFERENCE_WRONG_RECEIVER!>_<!><M2Sub>() }
+                a.foo(d, d) checkType { _<M2Sub>() }
 
                 // The same logic as for `c.baz`
-                a.baz(d, d) checkType { <!UNRESOLVED_REFERENCE_WRONG_RECEIVER!>_<!><M6>() }
+                a.baz(d, d) checkType { _<M6>() }
             }
             is B -> {
                 // Make sure smart cast works
@@ -70,7 +70,7 @@ open class B : A() {
                 a.foo(d, d) checkType { _<M3>() }
 
                 // The same logic as for `b.baz`
-                a.<!OVERLOAD_RESOLUTION_AMBIGUITY!>baz<!>(d, d) <!UNRESOLVED_REFERENCE_WRONG_RECEIVER!>checkType<!> { _<M5Sub>() }
+                a.baz(d, d) checkType { _<M5Sub>() }
             }
         }
 
