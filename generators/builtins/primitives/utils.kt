@@ -11,7 +11,7 @@ import java.io.File
 internal val END_LINE = System.lineSeparator()
 
 internal fun String.shift(): String {
-    return this.split(END_LINE).joinToString(separator = END_LINE) { "    $it" }
+    return this.split(END_LINE).joinToString(separator = END_LINE) { if (it.isEmpty()) it else "    $it" }
 }
 
 internal abstract class AnnotatedAndDocumented {
@@ -51,8 +51,9 @@ internal abstract class AnnotatedAndDocumented {
 
     private fun String.printAsDoc(forceMultiLine: Boolean = false): String {
         if (this.contains(END_LINE) || forceMultiLine) {
-            return this.split(END_LINE)
-                .joinToString(separator = END_LINE, prefix = "/**$END_LINE", postfix = "$END_LINE */") { " * $it" }
+            return this.split(END_LINE).joinToString(
+                separator = END_LINE, prefix = "/**$END_LINE", postfix = "$END_LINE */"
+            ) { if (it.isEmpty()) " *" else " * $it" }
         }
         return "/** $this */"
     }

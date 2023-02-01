@@ -352,8 +352,8 @@ abstract class BasePrimitivesGenerator(private val writer: PrintWriter) : BuiltI
         return buildList {
             for (otherKind in PrimitiveType.onlyNumeric) {
                 val doc =
-                    "Compares this value with the specified value for order. $END_LINE" +
-                            "Returns zero if this value is equal to the specified other value, a negative number if it's less than other, $END_LINE" +
+                    "Compares this value with the specified value for order.$END_LINE" +
+                            "Returns zero if this value is equal to the specified other value, a negative number if it's less than other,$END_LINE" +
                             "or a positive number if it's greater than other."
 
                 val signature = MethodSignature(
