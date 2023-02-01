@@ -17,6 +17,7 @@ internal fun String.shift(): String {
 internal abstract class AnnotatedAndDocumented {
     protected abstract var doc: String?
     protected abstract val annotations: MutableList<String>
+    private var additionalDoc: String? = null
 
     fun addDoc(doc: String) {
         if (this.doc == null) {
@@ -30,6 +31,10 @@ internal abstract class AnnotatedAndDocumented {
         annotations += annotation
     }
 
+    fun setAdditionalDoc(doc: String) {
+        additionalDoc = doc
+    }
+
     fun StringBuilder.printDocumentationAndAnnotations(forceMultiLineDoc: Boolean = false) {
         if (doc != null) {
             appendLine(doc!!.printAsDoc(forceMultiLineDoc))
@@ -37,6 +42,10 @@ internal abstract class AnnotatedAndDocumented {
 
         if (annotations.isNotEmpty()) {
             appendLine(annotations.joinToString(separator = END_LINE) { "@$it" })
+        }
+
+        if (additionalDoc != null) {
+            appendLine("// $additionalDoc")
         }
     }
 
@@ -92,6 +101,7 @@ internal data class ClassDescription(
     override val annotations: MutableList<String>,
     var isFinal: Boolean = false,
     val name: String,
+    var constructorArg: MethodParameter? = null,
     val companionObject: CompanionObjectDescription,
     val methods: List<MethodDescription>
 ) : AnnotatedAndDocumented() {
@@ -101,7 +111,7 @@ internal data class ClassDescription(
 
             append("public ")
             if (isFinal) append("final ")
-            appendLine("class $name private constructor() : Number(), Comparable<$name> {")
+            appendLine("class $name private constructor(${constructorArg?.toString() ?: ""}) : Number(), Comparable<$name> {")
             appendLine(companionObject.toString().shift())
             appendLine(methods.joinToString(separator = END_LINE + END_LINE) { it.toString().shift() })
             appendLine("}")
@@ -112,11 +122,13 @@ internal data class ClassDescription(
 internal data class CompanionObjectDescription(
     override var doc: String? = null,
     override val annotations: MutableList<String> = mutableListOf(),
+    var isPublic: Boolean = false,
     val properties: List<PropertyDescription>
 ) : AnnotatedAndDocumented() {
     override fun toString(): String {
         return buildString {
             printDocumentationAndAnnotations()
+            if (isPublic) append("public ")
             appendLine("companion object {")
             appendLine(properties.joinToString(separator = END_LINE + END_LINE) { it.toString().shift() })
             appendLine("}")
@@ -127,21 +139,22 @@ internal data class CompanionObjectDescription(
 internal data class MethodSignature(
     var isExternal: Boolean = false,
     val visibility: MethodVisibility = MethodVisibility.PUBLIC,
-    var isInfix: Boolean = false,
-    var isInline: Boolean = false,
     var isOverride: Boolean = false,
+    var isInline: Boolean = false,
+    var isInfix: Boolean = false,
     var isOperator: Boolean = false,
     val name: String,
     val arg: MethodParameter?,
     val returnType: String
 ) {
+
     override fun toString(): String {
         return buildString {
             if (isExternal) append("external ")
             append("${visibility.name.lowercase()} ")
-            if (isInfix) append("infix ")
-            if (isInline) append("inline ")
             if (isOverride) append("override ")
+            if (isInline) append("inline ")
+            if (isInfix) append("infix ")
             if (isOperator) append("operator ")
             append("fun $name(${arg ?: ""}): $returnType")
         }
@@ -196,5 +209,30 @@ internal data class PropertyDescription(
             printDocumentationAndAnnotations(forceMultiLineDoc = true)
             append("public const val $name: $type = $value")
         }
+    }
+}
+
+internal fun PrimitiveType.castToIfNecessary(otherType: PrimitiveType): String {
+    if (this !in PrimitiveType.onlyNumeric || otherType !in PrimitiveType.onlyNumeric) {
+        throw IllegalArgumentException("Cannot cast to non-numeric type")
+    }
+
+    if (this == otherType) return ""
+
+    if (this.ordinal < otherType.ordinal) {
+        return ".to${otherType.capitalized}()"
+    }
+
+    return ""
+}
+
+internal fun String.asSign(): String {
+    return when (this) {
+        "plus" -> "+"
+        "minus" -> "-"
+        "times" -> "*"
+        "div" -> "/"
+        "rem" -> "%"
+        else -> throw IllegalArgumentException("Unsupported binary operation: ${this}")
     }
 }

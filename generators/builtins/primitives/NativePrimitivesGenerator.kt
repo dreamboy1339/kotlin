@@ -74,14 +74,7 @@ class NativePrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(w
     }
 
     override fun MethodDescription.modifyGeneratedBinaryOperation(thisKind: PrimitiveType, otherKind: PrimitiveType) {
-        val sign = when (this.signature.name) {
-            "plus" -> "+"
-            "minus" -> "-"
-            "times" -> "*"
-            "div" -> "/"
-            "rem" -> "%"
-            else -> throw IllegalArgumentException("Unsupported binary operation: ${this.signature.name}")
-        }
+        val sign = this.signature.name.asSign()
 
         if (thisKind != PrimitiveType.BYTE && thisKind != PrimitiveType.SHORT && thisKind == otherKind) {
             this.signature.isExternal = true
@@ -240,20 +233,6 @@ class NativePrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(w
             if (this == "div" || this == "rem") return "SIGNED_${this.uppercase(Locale.getDefault())}"
             if (this.startsWith("unary")) return "UNARY_${this.replace("unary", "").uppercase(Locale.getDefault())}"
             return this.uppercase(Locale.getDefault())
-        }
-
-        private fun PrimitiveType.castToIfNecessary(otherType: PrimitiveType): String {
-            if (this !in PrimitiveType.onlyNumeric || otherType !in PrimitiveType.onlyNumeric) {
-                throw IllegalArgumentException("Cannot cast to non-numeric type")
-            }
-
-            if (this == otherType) return ""
-
-            if (this.ordinal < otherType.ordinal) {
-                return ".to${otherType.capitalized}()"
-            }
-
-            return ""
         }
     }
 }

@@ -7,7 +7,6 @@ package org.jetbrains.kotlin.generators.builtins.numbers.primitives
 
 import org.jetbrains.kotlin.generators.builtins.PrimitiveType
 import java.io.PrintWriter
-import java.util.*
 
 class WasmPrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(writer) {
     override fun FileDescription.modifyGeneratedFile() {
@@ -19,13 +18,13 @@ class WasmPrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(wri
     }
 
     override fun ClassDescription.modifyGeneratedClass(thisKind: PrimitiveType) {
-        this.isFinal = true
+        addAnnotation("WasmAutoboxed")
+        // used here little hack with name extension just to avoid creation of specialized "ConstructorParameterDescription"
+        constructorArg = MethodParameter("private val value", thisKind.capitalized)
     }
 
     override fun CompanionObjectDescription.modifyGeneratedCompanionObject(thisKind: PrimitiveType) {
-        if (thisKind !in PrimitiveType.floatingPoint) {
-            this.addAnnotation("CanBePrecreated")
-        }
+        isPublic = true
     }
 
     override fun primitiveConstants(type: PrimitiveType): List<Any> {
@@ -45,9 +44,13 @@ class WasmPrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(wri
     }
 
     override fun MethodDescription.modifyGeneratedCompareTo(thisKind: PrimitiveType, otherKind: PrimitiveType) {
+        if (thisKind != otherKind || thisKind !in PrimitiveType.floatingPoint) {
+            this.signature.isInline = true
+        }
+
+        val argName = this.signature.arg!!.name
         if (otherKind == thisKind) {
             if (thisKind in PrimitiveType.floatingPoint) {
-                val argName = this.signature.arg!!.name
                 """
                     // if any of values in NaN both comparisons return false
                     if (this > $argName) return 1
@@ -60,55 +63,89 @@ class WasmPrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(wri
                     return thisBits.compareTo(otherBits)
                 """.trimIndent().addAsMultiLineBody()
             } else {
-                addAnnotation("TypedIntrinsic(IntrinsicType.SIGNED_COMPARE_TO)")
-                this.signature.isExternal = true
+                val body = when (thisKind) {
+                    PrimitiveType.BYTE -> "wasm_i32_compareTo(this.toInt(), $argName.toInt())"
+                    PrimitiveType.SHORT -> "this.toInt().compareTo($argName.toInt())"
+                    PrimitiveType.INT, PrimitiveType.LONG -> "wasm_${thisKind.prefixLowercase}_compareTo(this, $argName)"
+                    else -> throw IllegalArgumentException("Unsupported type $thisKind for generation `compareTo` method")
+                }
+                body.addAsSingleLineBody(bodyOnNewLine = true)
             }
-        } else {
-            this.signature.isInline = thisKind !in PrimitiveType.floatingPoint
-            val thisCasted = "this" + thisKind.castToIfNecessary(otherKind)
-            val otherCasted = this.signature.arg!!.name + otherKind.castToIfNecessary(thisKind)
-            if (thisKind == PrimitiveType.FLOAT && otherKind == PrimitiveType.DOUBLE) {
-                "- ${otherCasted}.compareTo(this)".addAsSingleLineBody(bodyOnNewLine = true)
-            } else {
-                "$thisCasted.compareTo($otherCasted)".addAsSingleLineBody(bodyOnNewLine = true)
-            }
+            return
         }
+
+        val thisCasted = "this" + thisKind.castToIfNecessary(otherKind)
+        val otherCasted = argName + otherKind.castToIfNecessary(thisKind)
+        when {
+            thisKind == PrimitiveType.FLOAT && otherKind == PrimitiveType.DOUBLE -> "- ${otherCasted}.compareTo(this)"
+            else -> "$thisCasted.compareTo($otherCasted)"
+        }.addAsSingleLineBody(bodyOnNewLine = true)
     }
 
     override fun MethodDescription.modifyGeneratedBinaryOperation(thisKind: PrimitiveType, otherKind: PrimitiveType) {
-        val sign = when (this.signature.name) {
-            "plus" -> "+"
-            "minus" -> "-"
-            "times" -> "*"
-            "div" -> "/"
-            "rem" -> "%"
-            else -> throw IllegalArgumentException("Unsupported binary operation: ${this.signature.name}")
-        }
-
+        val sign = this.signature.name.asSign()
+        val argName = this.signature.arg!!.name
         if (thisKind != PrimitiveType.BYTE && thisKind != PrimitiveType.SHORT && thisKind == otherKind) {
-            this.signature.isExternal = true
-            addAnnotation("TypedIntrinsic(IntrinsicType.${this.signature.name.toNativeOperator()})")
+            val type = thisKind.capitalized
+
+            when (val methodName = this.signature.name) {
+                "div" -> {
+                    val oneConst = if (thisKind == PrimitiveType.LONG) "-1L" else "-1"
+                    when (thisKind) {
+                        PrimitiveType.INT, PrimitiveType.LONG -> "if (this == $type.MIN_VALUE && $argName == $oneConst) $type.MIN_VALUE else wasm_${thisKind.prefixLowercase}_div_s(this, $argName)"
+                        else -> return implementAsIntrinsic(thisKind, methodName)
+                    }
+                }
+                "rem" -> when (thisKind) {
+                    in PrimitiveType.floatingPoint -> "this - (wasm_${thisKind.prefixLowercase}_nearest(this / $argName) * $argName)"
+                    else -> return implementAsIntrinsic(thisKind, methodName)
+                }
+                else -> return implementAsIntrinsic(thisKind, methodName)
+            }.addAsSingleLineBody(bodyOnNewLine = true)
             return
         }
 
         this.signature.isInline = true
         val returnTypeAsPrimitive = PrimitiveType.valueOf(this.signature.returnType.uppercase())
         val thisCasted = "this" + thisKind.castToIfNecessary(returnTypeAsPrimitive)
-        val otherCasted = this.signature.arg!!.name + this.signature.arg.getTypeAsPrimitive().castToIfNecessary(returnTypeAsPrimitive)
+        val otherCasted = argName + this.signature.arg.getTypeAsPrimitive().castToIfNecessary(returnTypeAsPrimitive)
         "$thisCasted $sign $otherCasted".addAsSingleLineBody(bodyOnNewLine = true)
     }
 
     override fun MethodDescription.modifyGeneratedUnaryOperation(thisKind: PrimitiveType) {
-        if (this.signature.name in setOf("inc", "dec") || thisKind == PrimitiveType.INT ||
-            thisKind in PrimitiveType.floatingPoint || (this.signature.name == "unaryMinus" && thisKind == PrimitiveType.LONG)
-        ) {
-            this.signature.isExternal = true
-            this.addAnnotation("TypedIntrinsic(IntrinsicType.${this.signature.name.toNativeOperator()})")
+        val methodName = this.signature.name
+        if (thisKind == PrimitiveType.INT && methodName == "dec") {
+            setAdditionalDoc("TODO: Fix test compiler/testData/codegen/box/functions/invoke/invoke.kt with inline dec")
         } else {
             this.signature.isInline = true
+        }
+
+        if (methodName in setOf("inc", "dec")) {
+            val sign = if (methodName == "inc") "+" else "-"
+            when (thisKind) {
+                PrimitiveType.BYTE, PrimitiveType.SHORT -> "(this $sign 1).to${thisKind.capitalized}()".addAsSingleLineBody(bodyOnNewLine = true)
+                PrimitiveType.INT -> "this $sign 1".addAsSingleLineBody(bodyOnNewLine = true)
+                PrimitiveType.LONG -> "this $sign 1L".addAsSingleLineBody(bodyOnNewLine = true)
+                PrimitiveType.FLOAT -> "this $sign 1.0f".addAsSingleLineBody(bodyOnNewLine = true)
+                PrimitiveType.DOUBLE -> "this $sign 1.0".addAsSingleLineBody(bodyOnNewLine = true)
+                else -> Unit
+            }
+        }
+
+        if (methodName in setOf("unaryMinus", "unaryPlus")) {
+            if (thisKind in PrimitiveType.floatingPoint && methodName == "unaryMinus") {
+                return implementAsIntrinsic(thisKind, methodName)
+            }
+
             val returnTypeAsPrimitive = PrimitiveType.valueOf(this.signature.returnType.uppercase())
             val thisCasted = "this" + thisKind.castToIfNecessary(returnTypeAsPrimitive)
-            val sign = if (this.signature.name == "unaryMinus") "-" else ""
+            val sign = if (methodName == "unaryMinus") {
+                when (thisKind) {
+                    PrimitiveType.INT -> "0 - "
+                    PrimitiveType.LONG -> "0L - "
+                    else -> "-"
+                }
+            } else ""
             "$sign$thisCasted".addAsSingleLineBody(bodyOnNewLine = true)
         }
     }
@@ -125,13 +162,23 @@ class WasmPrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(wri
     }
 
     override fun MethodDescription.modifyGeneratedBitShiftOperators(thisKind: PrimitiveType) {
-        this.signature.isExternal = true
-        this.addAnnotation("TypedIntrinsic(IntrinsicType.${this.signature.name.toNativeOperator()})")
+        if (thisKind == PrimitiveType.INT) {
+            implementAsIntrinsic(thisKind, this.signature.name)
+        } else if (thisKind == PrimitiveType.LONG) {
+            this.signature.isInline = true
+            "wasm_i64_${this.signature.name.toWasmOperator().lowercase()}(this, ${signature.arg!!.name}.toLong())".addAsSingleLineBody(bodyOnNewLine = true)
+        }
     }
 
     override fun MethodDescription.modifyGeneratedBitwiseOperators(thisKind: PrimitiveType) {
-        this.signature.isExternal = true
-        this.addAnnotation("TypedIntrinsic(IntrinsicType.${this.signature.name.toNativeOperator()})")
+        if (this.signature.name == "inv") {
+            this.signature.isInline = true
+            val oneConst = if (thisKind == PrimitiveType.LONG) "-1L" else "-1"
+            "this.xor($oneConst)".addAsSingleLineBody(bodyOnNewLine = true)
+            return
+        }
+
+        implementAsIntrinsic(thisKind, this.signature.name)
     }
 
     override fun MethodDescription.modifyGeneratedConversions(thisKind: PrimitiveType) {
@@ -139,49 +186,84 @@ class WasmPrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(wri
         if (returnTypeAsPrimitive == thisKind) {
             this.signature.isInline = true
             "this".addAsSingleLineBody(bodyOnNewLine = true)
-        } else if (thisKind !in PrimitiveType.floatingPoint) {
-            this.signature.isExternal = true
-            val intrinsicType = when {
-                returnTypeAsPrimitive in PrimitiveType.floatingPoint -> "SIGNED_TO_FLOAT"
-                returnTypeAsPrimitive.byteSize < thisKind.byteSize -> "INT_TRUNCATE"
-                returnTypeAsPrimitive.byteSize > thisKind.byteSize -> "SIGN_EXTEND"
-                else -> "ZERO_EXTEND"
-            }
-            this.addAnnotation("TypedIntrinsic(IntrinsicType.$intrinsicType)")
-        } else {
-            if (returnTypeAsPrimitive in setOf(PrimitiveType.BYTE, PrimitiveType.SHORT, PrimitiveType.CHAR)) {
-                "this.toInt().to${this.signature.returnType}()".addAsSingleLineBody(bodyOnNewLine = false)
-                return
-            }
-
-            this.signature.isExternal = true
-            if (returnTypeAsPrimitive in setOf(PrimitiveType.INT, PrimitiveType.LONG)) {
-                this.addAnnotation("GCUnsafeCall(\"Kotlin_${thisKind.capitalized}_to${this.signature.returnType}\")")
-            } else if (thisKind.byteSize > returnTypeAsPrimitive.byteSize) {
-                this.addAnnotation("TypedIntrinsic(IntrinsicType.FLOAT_TRUNCATE)")
-            } else if (thisKind.byteSize < returnTypeAsPrimitive.byteSize) {
-                this.addAnnotation("TypedIntrinsic(IntrinsicType.FLOAT_EXTEND)")
-            }
+            return
         }
+
+        when (thisKind) {
+            PrimitiveType.BYTE -> when (returnTypeAsPrimitive) {
+                PrimitiveType.CHAR -> "reinterpretAsInt().reinterpretAsChar()"
+                PrimitiveType.SHORT -> "reinterpretAsInt().reinterpretAsShort()"
+                PrimitiveType.INT -> "reinterpretAsInt()"
+                PrimitiveType.LONG -> "wasm_i64_extend_i32_s(this.toInt())"
+                PrimitiveType.FLOAT -> "wasm_f32_convert_i32_s(this.toInt())"
+                PrimitiveType.DOUBLE -> "wasm_f64_convert_i32_s(this.toInt())"
+                else -> TODO()
+            }
+            PrimitiveType.SHORT -> when (returnTypeAsPrimitive) {
+                PrimitiveType.BYTE -> "this.toInt().toByte()".also { this.signature.isInline = true }
+                PrimitiveType.CHAR -> "reinterpretAsInt().reinterpretAsChar()"
+                PrimitiveType.INT -> "reinterpretAsInt()"
+                PrimitiveType.LONG -> "wasm_i64_extend_i32_s(this.toInt())"
+                PrimitiveType.FLOAT -> "wasm_f32_convert_i32_s(this.toInt())"
+                PrimitiveType.DOUBLE -> "wasm_f64_convert_i32_s(this.toInt())"
+                else -> TODO()
+            }
+            PrimitiveType.INT -> when (returnTypeAsPrimitive) {
+                PrimitiveType.BYTE -> "((this shl 24) shr 24).reinterpretAsByte()"
+                PrimitiveType.CHAR -> "(this and 0xFFFF).reinterpretAsChar()"
+                PrimitiveType.SHORT -> "((this shl 16) shr 16).reinterpretAsShort()"
+                PrimitiveType.LONG -> "wasm_i64_extend_i32_s(this)"
+                PrimitiveType.FLOAT -> "wasm_f32_convert_i32_s(this)"
+                PrimitiveType.DOUBLE -> "wasm_f64_convert_i32_s(this)"
+                else -> TODO()
+            }
+            PrimitiveType.LONG -> when (returnTypeAsPrimitive) {
+                PrimitiveType.BYTE, PrimitiveType.CHAR, PrimitiveType.SHORT -> "this.toInt().to${returnTypeAsPrimitive.capitalized}()"
+                    .also { this.signature.isInline = true }
+                PrimitiveType.INT -> "wasm_i32_wrap_i64(this)"
+                PrimitiveType.FLOAT -> "wasm_f32_convert_i64_s(this)"
+                PrimitiveType.DOUBLE -> "wasm_f64_convert_i64_s(this)"
+                else -> TODO()
+            }
+            PrimitiveType.FLOAT -> when (returnTypeAsPrimitive) {
+                PrimitiveType.BYTE, PrimitiveType.CHAR, PrimitiveType.SHORT -> "this.toInt().to${returnTypeAsPrimitive.capitalized}()"
+                    .also { this.signature.isInline = true }
+                PrimitiveType.INT -> "wasm_i32_trunc_sat_f32_s(this)"
+                PrimitiveType.LONG -> "wasm_i64_trunc_sat_f32_s(this)"
+                PrimitiveType.DOUBLE -> "wasm_f64_promote_f32(this)"
+                else -> TODO()
+            }
+            PrimitiveType.DOUBLE -> when (returnTypeAsPrimitive) {
+                PrimitiveType.BYTE, PrimitiveType.CHAR, PrimitiveType.SHORT -> "this.toInt().to${returnTypeAsPrimitive.capitalized}()"
+                    .also { this.signature.isInline = true }
+                PrimitiveType.INT -> "wasm_i32_trunc_sat_f64_s(this)"
+                PrimitiveType.LONG -> "wasm_i64_trunc_sat_f64_s(this)"
+                PrimitiveType.FLOAT -> "wasm_f32_demote_f64(this)"
+                else -> TODO()
+            }
+            else -> TODO()
+        }.addAsSingleLineBody(bodyOnNewLine = false)
     }
 
     override fun MethodDescription.modifyGeneratedEquals(thisKind: PrimitiveType) {
         val argName = this.signature.arg!!.name
-        val additionalCheck = if (thisKind in PrimitiveType.floatingPoint) {
-            "this.equals(other)"
-        } else {
-            "kotlin.native.internal.areEqualByValue(this, $argName)"
+        val additionalCheck = when (thisKind) {
+            PrimitiveType.LONG -> "wasm_i64_eq(this, $argName)"
+            PrimitiveType.FLOAT -> "this.equals(other)"
+            PrimitiveType.DOUBLE -> "this.toBits() == other.toBits()"
+            else -> {
+                "wasm_i32_eq(this${thisKind.castToIfNecessary(PrimitiveType.INT)}, $argName${thisKind.castToIfNecessary(PrimitiveType.INT)})"
+            }
         }
         "\t$argName is ${thisKind.capitalized} && $additionalCheck".addAsSingleLineBody(bodyOnNewLine = true)
     }
 
     override fun MethodDescription.modifyGeneratedToString(thisKind: PrimitiveType) {
-        if (thisKind in PrimitiveType.floatingPoint) {
-            "NumberConverter.convert(this)".addAsSingleLineBody(bodyOnNewLine = false)
-        } else {
-            this.signature.isExternal = true
-            this.addAnnotation("GCUnsafeCall(\"Kotlin_${thisKind.capitalized}_toString\")")
-        }
+        when (thisKind) {
+            in PrimitiveType.floatingPoint -> "dtoa(this${thisKind.castToIfNecessary(PrimitiveType.DOUBLE)})"
+            PrimitiveType.INT, PrimitiveType.LONG -> "itoa${thisKind.bitSize}(this, 10)"
+            else -> "this.toInt().toString()"
+        }.addAsSingleLineBody(bodyOnNewLine = true)
     }
 
     override fun generateAdditionalMethods(thisKind: PrimitiveType): List<MethodDescription> {
@@ -189,6 +271,7 @@ class WasmPrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(wri
             doc = null,
             signature = MethodSignature(
                 isOverride = true,
+                isInline = true,
                 name = "hashCode",
                 arg = null,
                 returnType = PrimitiveType.INT.capitalized
@@ -205,6 +288,7 @@ class WasmPrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(wri
         val customEquals = MethodDescription(
             doc = null,
             signature = MethodSignature(
+                isInline = thisKind in PrimitiveType.floatingPoint,
                 name = "equals",
                 arg = MethodParameter("other", thisKind.capitalized),
                 returnType = PrimitiveType.BOOLEAN.capitalized
@@ -212,50 +296,65 @@ class WasmPrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(wri
         ).apply {
             when (thisKind) {
                 in PrimitiveType.floatingPoint -> "toBits() == other.toBits()".addAsSingleLineBody(bodyOnNewLine = false)
-                else -> "kotlin.native.internal.areEqualByValue(this, other)".addAsSingleLineBody(bodyOnNewLine = false)
+                else -> implementAsIntrinsic(thisKind, this.signature.name)
             }
         }
 
-        val bits = MethodDescription(
-            doc = null,
-            signature = MethodSignature(
-                isExternal = true,
-                visibility = MethodVisibility.INTERNAL,
-                name = "bits",
-                arg = null,
-                returnType = if (thisKind == PrimitiveType.FLOAT) PrimitiveType.INT.capitalized else PrimitiveType.LONG.capitalized
-            )
-        ).apply {
-            this.addAnnotation("TypedIntrinsic(IntrinsicType.REINTERPRET)")
-            this.addAnnotation("PublishedApi")
-        }
+        val reinterprets = setOf(PrimitiveType.INT, PrimitiveType.BOOLEAN, PrimitiveType.BYTE, PrimitiveType.SHORT, PrimitiveType.CHAR)
+            .map {
+                MethodDescription(
+                    doc = null,
+                    annotations = mutableListOf("WasmNoOpCast", "PublishedApi"),
+                    signature = MethodSignature(
+                        visibility = MethodVisibility.INTERNAL,
+                        name = "reinterpretAs${it.capitalized}",
+                        arg = null,
+                        returnType = it.capitalized
+                    )
+                ).apply { "implementedAsIntrinsic".addAsSingleLineBody(bodyOnNewLine = true) }
+            }
 
-        return if (thisKind in PrimitiveType.floatingPoint) {
-            listOf(customEquals, hashCode, bits)
-        } else {
-            listOf(customEquals, hashCode)
+        val reinterpretInt = reinterprets.first()
+        val otherReinterprets = reinterprets.drop(1).toTypedArray()
+
+        return when (thisKind) {
+            PrimitiveType.BYTE, PrimitiveType.SHORT -> listOf(customEquals, hashCode, reinterpretInt)
+            PrimitiveType.INT -> listOf(customEquals, hashCode, *otherReinterprets)
+            else -> listOf(customEquals, hashCode)
         }
     }
 
     companion object {
-        private fun String.toNativeOperator(): String {
-            if (this == "div" || this == "rem") return "SIGNED_${this.uppercase(Locale.getDefault())}"
-            if (this.startsWith("unary")) return "UNARY_${this.replace("unary", "").uppercase(Locale.getDefault())}"
-            return this.uppercase(Locale.getDefault())
+        private fun String.toWasmOperator(): String {
+            return when (this) {
+                "plus" -> "ADD"
+                "minus" -> "SUB"
+                "times" -> "MUL"
+                "rem" -> "REM_S"
+                "unaryMinus" -> "NEG"
+                "shr" -> "SHR_S"
+                "ushr" -> "SHR_U"
+                "equals" -> "EQ"
+                else -> this.uppercase()
+            }
         }
 
-        private fun PrimitiveType.castToIfNecessary(otherType: PrimitiveType): String {
-            if (this !in PrimitiveType.onlyNumeric || otherType !in PrimitiveType.onlyNumeric) {
-                throw IllegalArgumentException("Cannot cast to non-numeric type")
-            }
-
-            if (this == otherType) return ""
-
-            if (this.ordinal < otherType.ordinal) {
-                return ".to${otherType.capitalized}()"
-            }
-
-            return ""
+        private fun MethodDescription.implementAsIntrinsic(thisKind: PrimitiveType, methodName: String) {
+            this.signature.isInline = false
+            addAnnotation("WasmOp(WasmOp.${thisKind.prefixUppercase}_${methodName.toWasmOperator()})")
+            "implementedAsIntrinsic".addAsSingleLineBody(bodyOnNewLine = true)
         }
+
+        private val PrimitiveType.prefixUppercase: String
+            get() = when (this) {
+                PrimitiveType.BYTE, PrimitiveType.SHORT, PrimitiveType.INT -> "I32"
+                PrimitiveType.LONG -> "I64"
+                PrimitiveType.FLOAT -> "F32"
+                PrimitiveType.DOUBLE -> "F64"
+                else -> ""
+            }
+
+        private val PrimitiveType.prefixLowercase: String
+            get() = prefixUppercase.lowercase()
     }
 }
