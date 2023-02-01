@@ -193,13 +193,14 @@ object KtDeclarationAndFirDeclarationEqualityChecker {
             }
             is ConeTypeVariableType -> lookupTag.name.asString()
             is ConeLookupTagBasedType -> lookupTag.name.asString()
-            is ConeFlexibleType -> {
-                // Can be present as return type
-                "${lowerBound.renderTypeAsKotlinType()}..${upperBound.renderTypeAsKotlinType()}"
-            }
+            // approximate to lowerBound (A..A? -> A)
+            is ConeFlexibleType -> lowerBound.renderTypeAsKotlinType()
             else -> errorWithFirSpecificEntries("Type should not be present in Kotlin declaration", coneType = this)
         }.replace('/', '.')
-        return rendered + nullability.suffix
+
+        val nullabilitySuffix = nullability.takeUnless { it == ConeNullability.UNKNOWN }?.suffix.orEmpty()
+
+        return rendered + nullabilitySuffix
     }
 
     private fun ConeTypeProjection.renderTypeAsKotlinType(): String = when (this) {
