@@ -210,7 +210,7 @@ abstract class LlvmOptimizationPipeline(
             // TargetTransformInfo pass.
             LLVMAddAnalysisPasses(targetMachine, passManager)
 
-            confugrePipeline(config, passManager, passBuilder)
+            configurePipeline(config, passManager, passBuilder)
             executeCustomPasses(config, llvmModule)
             // TODO: how to log content of pass manager?
             logger?.log {
