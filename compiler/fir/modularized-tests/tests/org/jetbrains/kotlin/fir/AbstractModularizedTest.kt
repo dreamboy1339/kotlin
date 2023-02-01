@@ -10,12 +10,9 @@ import org.jdom.Element
 import org.jetbrains.kotlin.fir.scopes.ProcessorAction
 import org.jetbrains.kotlin.test.testFramework.KtUsefulTestCase
 import org.jetbrains.kotlin.types.AbstractTypeChecker
-import org.w3c.dom.Node
-import org.w3c.dom.NodeList
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
-import javax.xml.parsers.DocumentBuilderFactory
 
 data class ModuleData(
     val name: String,
