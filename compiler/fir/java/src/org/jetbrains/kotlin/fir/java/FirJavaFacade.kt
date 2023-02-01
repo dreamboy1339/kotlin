@@ -242,9 +242,6 @@ abstract class FirJavaFacade(
                 effectiveVisibility
             ).apply {
                 this.isInner = !isTopLevel && !this@buildJavaClass.isStatic
-                isCompanion = false
-                isData = false
-                isInline = false
                 isFun = classKind == ClassKind.INTERFACE
             }
             // TODO: may be we can process fields & methods later.
@@ -454,9 +451,6 @@ abstract class FirJavaFacade(
                     javaField.visibility.toEffectiveVisibility(dispatchReceiver.lookupTag)
                 ).apply {
                     isStatic = javaField.isStatic
-                    isExpect = false
-                    isActual = false
-                    isOverride = false
                 }
                 returnTypeRef = returnType.toFirJavaTypeRef(session, javaTypeParameterStack)
                 resolvePhase = FirResolvePhase.ANALYZED_DEPENDENCIES
@@ -478,9 +472,6 @@ abstract class FirJavaFacade(
                     javaField.visibility.toEffectiveVisibility(dispatchReceiver.lookupTag)
                 ).apply {
                     isStatic = javaField.isStatic
-                    isExpect = false
-                    isActual = false
-                    isOverride = false
                 }
                 visibility = javaField.visibility
                 modality = javaField.modality
@@ -536,17 +527,9 @@ abstract class FirJavaFacade(
                 javaMethod.visibility.toEffectiveVisibility(dispatchReceiver.lookupTag)
             ).apply {
                 isStatic = javaMethod.isStatic
-                isExpect = false
-                isActual = false
-                isOverride = false
                 // Approximation: all Java methods with name that allows to use it in operator form are considered operators
                 // We need here more detailed checks (see modifierChecks.kt)
                 isOperator = name in ALL_JAVA_OPERATION_NAMES || OperatorNameConventions.COMPONENT_REGEX.matches(name.asString())
-                isInfix = false
-                isInline = false
-                isTailRec = false
-                isExternal = false
-                isSuspend = false
             }
 
             if (!javaMethod.isStatic) {
@@ -602,9 +585,6 @@ abstract class FirJavaFacade(
                 Modality.FINAL,
                 visibility.toEffectiveVisibility(ownerClassBuilder.symbol)
             ).apply {
-                isExpect = false
-                isActual = false
-                isOverride = false
                 isInner = isThisInner
             }
             this.visibility = visibility
