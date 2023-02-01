@@ -302,7 +302,7 @@ class MandatoryOptimizationPipeline(config: LlvmPipelineConfig, logger: LoggingC
 
 class ModuleOptimizationPipeline(config: LlvmPipelineConfig, logger: LoggingContext? = null) :
         LlvmOptimizationPipeline(config, logger) {
-    override fun confugrePipeline(config: LlvmPipelineConfig, manager: LLVMPassManagerRef, builder: LLVMPassManagerBuilderRef) {
+    override fun configurePipeline(config: LlvmPipelineConfig, manager: LLVMPassManagerRef, builder: LLVMPassManagerBuilderRef) {
         LLVMPassManagerBuilderPopulateModulePassManager(builder, manager)
         LLVMPassManagerBuilderPopulateFunctionPassManager(builder, manager)
     }
