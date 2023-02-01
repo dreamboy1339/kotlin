@@ -280,7 +280,7 @@ class MandatoryOptimizationPipeline(config: LlvmPipelineConfig, logger: LoggingC
 
     override val pipelineName = "Mandatory llvm optimizations"
 
-    override fun confugrePipeline(config: LlvmPipelineConfig, manager: LLVMPassManagerRef, builder: LLVMPassManagerBuilderRef) {
+    override fun configurePipeline(config: LlvmPipelineConfig, manager: LLVMPassManagerRef, builder: LLVMPassManagerBuilderRef) {
         if (config.objCPasses) {
             // Lower ObjC ARC intrinsics (e.g. `@llvm.objc.clang.arc.use(...)`).
             // While Kotlin/Native codegen itself doesn't produce these intrinsics, they might come
