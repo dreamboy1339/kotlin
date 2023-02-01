@@ -46,14 +46,6 @@ data class JavaSourceRootData<Path : Any>(val path: Path, val packagePrefix: Str
 
 private fun String.fixPath(): File = File(ROOT_PATH_PREFIX, this.removePrefix("/"))
 
-private fun NodeList.toList(): List<Node> {
-    val list = mutableListOf<Node>()
-    for (index in 0 until this.length) {
-        list += item(index)
-    }
-    return list
-}
-
 private val ROOT_PATH_PREFIX:String = System.getProperty("fir.bench.prefix", "/")
 private val OUTPUT_DIR_REGEX_FILTER:String = System.getProperty("fir.bench.filter", ".*")
 private val MODULE_NAME_FILTER: String? = System.getProperty("fir.bench.filter.name")
