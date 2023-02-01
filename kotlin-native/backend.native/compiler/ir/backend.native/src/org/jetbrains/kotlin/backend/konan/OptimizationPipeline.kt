@@ -330,7 +330,7 @@ class LTOOptimizationPipeline(config: LlvmPipelineConfig, logger: LoggingContext
 
 class ThreadSanitizerPipeline(config: LlvmPipelineConfig, logger: LoggingContext? = null) :
         LlvmOptimizationPipeline(config, logger) {
-    override fun confugrePipeline(config: LlvmPipelineConfig, manager: LLVMPassManagerRef, builder: LLVMPassManagerBuilderRef) {
+    override fun configurePipeline(config: LlvmPipelineConfig, manager: LLVMPassManagerRef, builder: LLVMPassManagerBuilderRef) {
         LLVMAddThreadSanitizerPass(manager)
     }
 
