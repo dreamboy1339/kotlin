@@ -12,7 +12,7 @@ evaluationDependsOnChildren()
 
 fun pKotlinBig() = project("kotlin_big").ext
 
-val outputDir = file("$buildDir/doc")
+val outputDir = file(findProperty("docsBuildDir") as String? ?: "$buildDir/doc")
 val outputDirLatest = file("$outputDir/latest")
 val outputDirPrevious = file("$outputDir/previous")
 val kotlin_root: String by pKotlinBig()
