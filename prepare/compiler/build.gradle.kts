@@ -127,6 +127,7 @@ val distSourcesProjects = listOfNotNull(
     ":kotlin-test:kotlin-test-junit",
     ":kotlin-test:kotlin-test-junit5",
     ":kotlin-test:kotlin-test-jvm",
+    ":kotlin-test:kotlin-test-common",
     ":kotlin-test:kotlin-test-testng"
 )
 
