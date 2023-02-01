@@ -174,7 +174,7 @@ abstract class LlvmOptimizationPipeline(
         private val config: LlvmPipelineConfig,
         private val logger: LoggingContext? = null
 ) : Closeable {
-    abstract fun confugrePipeline(config: LlvmPipelineConfig, manager: LLVMPassManagerRef, builder: LLVMPassManagerBuilderRef)
+    abstract fun configurePipeline(config: LlvmPipelineConfig, manager: LLVMPassManagerRef, builder: LLVMPassManagerBuilderRef)
     open fun executeCustomPasses(config: LlvmPipelineConfig, module: LLVMModuleRef) {}
     abstract val pipelineName: String
 
