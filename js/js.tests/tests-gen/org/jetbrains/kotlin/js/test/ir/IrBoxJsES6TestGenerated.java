@@ -2398,12 +2398,6 @@ public class IrBoxJsES6TestGenerated extends AbstractIrBoxJsES6Test {
             }
 
             @Test
-            @TestMetadata("reexport.kt")
-            public void testReexport() throws Exception {
-                runTest("js/js.translator/testData/box/esModules/export/reexport.kt");
-            }
-
-            @Test
             @TestMetadata("reservedModuleName.kt")
             public void testReservedModuleName() throws Exception {
                 runTest("js/js.translator/testData/box/esModules/export/reservedModuleName.kt");

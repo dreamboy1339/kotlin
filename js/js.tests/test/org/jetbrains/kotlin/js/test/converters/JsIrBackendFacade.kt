@@ -314,6 +314,6 @@ fun String.minify(): String {
         .replace("_minimal_for_test", "_min")
 }
 
-private fun String.isPath(): Boolean = contains("/")
+fun String.isPath(): Boolean = contains("/")
 
 fun File.augmentWithModuleName(moduleName: String): File = File(absolutePath.augmentWithModuleName(moduleName))
