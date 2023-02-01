@@ -312,7 +312,7 @@ class ModuleOptimizationPipeline(config: LlvmPipelineConfig, logger: LoggingCont
 
 class LTOOptimizationPipeline(config: LlvmPipelineConfig, logger: LoggingContext? = null) :
         LlvmOptimizationPipeline(config, logger) {
-    override fun confugrePipeline(config: LlvmPipelineConfig, manager: LLVMPassManagerRef, builder: LLVMPassManagerBuilderRef) {
+    override fun configurePipeline(config: LlvmPipelineConfig, manager: LLVMPassManagerRef, builder: LLVMPassManagerBuilderRef) {
         if (config.internalize) {
             LLVMAddInternalizePass(manager, 0)
         }
