@@ -224,13 +224,15 @@ abstract class BasePrimitivesGenerator(private val writer: PrintWriter) : BuiltI
         else -> throw IllegalArgumentException("type: $type")
     }
 
+    open fun PrimitiveType.shouldGenerate(): Boolean = true
+
     override fun generate() {
         writer.print(FileDescription(classes = generateClasses()).apply { this.modifyGeneratedFile() }.toString())
     }
 
     private fun generateClasses(): List<ClassDescription> {
         return buildList {
-            for (thisKind in PrimitiveType.onlyNumeric) {
+            for (thisKind in PrimitiveType.onlyNumeric.filter { it.shouldGenerate() }) {
                 val className = thisKind.capitalized
                 val doc = "Represents a ${typeDescriptions[thisKind]}."
 

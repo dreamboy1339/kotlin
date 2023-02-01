@@ -10,6 +10,7 @@ import org.jetbrains.kotlin.generators.builtins.arrays.GenerateArrays
 import org.jetbrains.kotlin.generators.builtins.functions.GenerateFunctions
 import org.jetbrains.kotlin.generators.builtins.iterators.GenerateIterators
 import org.jetbrains.kotlin.generators.builtins.numbers.GenerateFloorDivMod
+import org.jetbrains.kotlin.generators.builtins.numbers.primitives.JsPrimitivesGenerator
 import org.jetbrains.kotlin.generators.builtins.numbers.primitives.JvmPrimitivesGenerator
 import org.jetbrains.kotlin.generators.builtins.numbers.primitives.NativePrimitivesGenerator
 import org.jetbrains.kotlin.generators.builtins.numbers.primitives.WasmPrimitivesGenerator
@@ -72,6 +73,7 @@ fun generateBuiltIns(generate: (File, (PrintWriter) -> BuiltInsGenerator) -> Uni
     generate(File(RUNTIME_JVM_DIR, "kotlin/jvm/functions/Functions.kt")) { GenerateFunctions(it) }
     generate(File(BUILT_INS_NATIVE_DIR_JVM, "kotlin/Arrays.kt")) { GenerateArrays(it) }
     generate(File(BUILT_INS_NATIVE_DIR_JVM, "kotlin/Primitives.kt")) { JvmPrimitivesGenerator(it) }
+    generate(File(BUILT_INS_NATIVE_DIR_JS, "Primitives.kt")) { JsPrimitivesGenerator(it) }
     generate(File(BUILT_INS_NATIVE_DIR_WASM, "kotlin/Primitives.kt")) { WasmPrimitivesGenerator(it) }
     generate(File(BUILT_INS_NATIVE_DIR_NATIVE, "kotlin/Primitives.kt")) { NativePrimitivesGenerator(it) }
     generate(File(STDLIB_DIR, "kotlin/collections/PrimitiveIterators.kt")) { GenerateIterators(it) }

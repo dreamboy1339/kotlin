@@ -11,7 +11,7 @@ import java.io.File
 internal val END_LINE = System.lineSeparator()
 
 internal fun String.shift(): String {
-    return this.split(END_LINE).joinToString(separator = END_LINE) { "\t$it" }
+    return this.split(END_LINE).joinToString(separator = END_LINE) { "    $it" }
 }
 
 internal abstract class AnnotatedAndDocumented {
