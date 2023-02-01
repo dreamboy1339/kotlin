@@ -58,28 +58,26 @@ class NativePrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(w
                     return thisBits.compareTo(otherBits)
                 """.trimIndent().addAsMultiLineBody()
             } else {
-                addAnnotation("TypedIntrinsic(IntrinsicType.SIGNED_COMPARE_TO)")
-                this.signature.isExternal = true
+                setAsExternal()
             }
-        } else {
-            this.signature.isInline = thisKind !in PrimitiveType.floatingPoint
-            val thisCasted = "this" + thisKind.castToIfNecessary(otherKind)
-            val otherCasted = this.signature.arg!!.name + otherKind.castToIfNecessary(thisKind)
-            if (thisKind == PrimitiveType.FLOAT && otherKind == PrimitiveType.DOUBLE) {
-                "- ${otherCasted}.compareTo(this)".addAsSingleLineBody(bodyOnNewLine = true)
-            } else {
-                "$thisCasted.compareTo($otherCasted)".addAsSingleLineBody(bodyOnNewLine = true)
-            }
+            return
         }
+
+        this.signature.isInline = thisKind !in PrimitiveType.floatingPoint
+        val thisCasted = "this" + thisKind.castToIfNecessary(otherKind)
+        val otherCasted = this.signature.arg!!.name + otherKind.castToIfNecessary(thisKind)
+        if (thisKind == PrimitiveType.FLOAT && otherKind == PrimitiveType.DOUBLE) {
+            "- ${otherCasted}.compareTo(this)"
+        } else {
+            "$thisCasted.compareTo($otherCasted)"
+        }.addAsSingleLineBody(bodyOnNewLine = true)
     }
 
     override fun MethodDescription.modifyGeneratedBinaryOperation(thisKind: PrimitiveType, otherKind: PrimitiveType) {
         val sign = this.signature.name.asSign()
 
         if (thisKind != PrimitiveType.BYTE && thisKind != PrimitiveType.SHORT && thisKind == otherKind) {
-            this.signature.isExternal = true
-            addAnnotation("TypedIntrinsic(IntrinsicType.${this.signature.name.toNativeOperator()})")
-            return
+            return setAsExternal()
         }
 
         this.signature.isInline = true
@@ -93,15 +91,14 @@ class NativePrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(w
         if (this.signature.name in setOf("inc", "dec") || thisKind == PrimitiveType.INT ||
             thisKind in PrimitiveType.floatingPoint || (this.signature.name == "unaryMinus" && thisKind == PrimitiveType.LONG)
         ) {
-            this.signature.isExternal = true
-            this.addAnnotation("TypedIntrinsic(IntrinsicType.${this.signature.name.toNativeOperator()})")
-        } else {
-            this.signature.isInline = true
-            val returnTypeAsPrimitive = PrimitiveType.valueOf(this.signature.returnType.uppercase())
-            val thisCasted = "this" + thisKind.castToIfNecessary(returnTypeAsPrimitive)
-            val sign = if (this.signature.name == "unaryMinus") "-" else ""
-            "$sign$thisCasted".addAsSingleLineBody(bodyOnNewLine = true)
+            return setAsExternal()
         }
+
+        this.signature.isInline = true
+        val returnTypeAsPrimitive = PrimitiveType.valueOf(this.signature.returnType.uppercase())
+        val thisCasted = "this" + thisKind.castToIfNecessary(returnTypeAsPrimitive)
+        val sign = if (this.signature.name == "unaryMinus") "-" else ""
+        "$sign$thisCasted".addAsSingleLineBody(bodyOnNewLine = true)
     }
 
     override fun MethodDescription.modifyGeneratedRangeTo(thisKind: PrimitiveType) {
@@ -116,42 +113,48 @@ class NativePrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(w
     }
 
     override fun MethodDescription.modifyGeneratedBitShiftOperators(thisKind: PrimitiveType) {
-        this.signature.isExternal = true
-        this.addAnnotation("TypedIntrinsic(IntrinsicType.${this.signature.name.toNativeOperator()})")
+        setAsExternal()
     }
 
     override fun MethodDescription.modifyGeneratedBitwiseOperators(thisKind: PrimitiveType) {
-        this.signature.isExternal = true
-        this.addAnnotation("TypedIntrinsic(IntrinsicType.${this.signature.name.toNativeOperator()})")
+        setAsExternal()
     }
 
     override fun MethodDescription.modifyGeneratedConversions(thisKind: PrimitiveType) {
         val returnTypeAsPrimitive = PrimitiveType.valueOf(this.signature.returnType.uppercase())
-        if (returnTypeAsPrimitive == thisKind) {
-            this.signature.isInline = true
-            "this".addAsSingleLineBody(bodyOnNewLine = true)
-        } else if (thisKind !in PrimitiveType.floatingPoint) {
-            this.signature.isExternal = true
-            val intrinsicType = when {
-                returnTypeAsPrimitive in PrimitiveType.floatingPoint -> "SIGNED_TO_FLOAT"
-                returnTypeAsPrimitive.byteSize < thisKind.byteSize -> "INT_TRUNCATE"
-                returnTypeAsPrimitive.byteSize > thisKind.byteSize -> "SIGN_EXTEND"
-                else -> "ZERO_EXTEND"
+        when {
+            returnTypeAsPrimitive == thisKind -> {
+                this.signature.isInline = true
+                "this".addAsSingleLineBody(bodyOnNewLine = true)
             }
-            this.addAnnotation("TypedIntrinsic(IntrinsicType.$intrinsicType)")
-        } else {
-            if (returnTypeAsPrimitive in setOf(PrimitiveType.BYTE, PrimitiveType.SHORT, PrimitiveType.CHAR)) {
-                "this.toInt().to${this.signature.returnType}()".addAsSingleLineBody(bodyOnNewLine = false)
-                return
+            thisKind !in PrimitiveType.floatingPoint -> {
+                this.signature.isExternal = true
+                val intrinsicType = when {
+                    returnTypeAsPrimitive in PrimitiveType.floatingPoint -> "SIGNED_TO_FLOAT"
+                    returnTypeAsPrimitive.byteSize < thisKind.byteSize -> "INT_TRUNCATE"
+                    returnTypeAsPrimitive.byteSize > thisKind.byteSize -> "SIGN_EXTEND"
+                    else -> "ZERO_EXTEND"
+                }
+                this.addAnnotation("TypedIntrinsic(IntrinsicType.$intrinsicType)")
             }
+            else -> {
+                if (returnTypeAsPrimitive in setOf(PrimitiveType.BYTE, PrimitiveType.SHORT, PrimitiveType.CHAR)) {
+                    "this.toInt().to${this.signature.returnType}()".addAsSingleLineBody(bodyOnNewLine = false)
+                    return
+                }
 
-            this.signature.isExternal = true
-            if (returnTypeAsPrimitive in setOf(PrimitiveType.INT, PrimitiveType.LONG)) {
-                this.addAnnotation("GCUnsafeCall(\"Kotlin_${thisKind.capitalized}_to${this.signature.returnType}\")")
-            } else if (thisKind.byteSize > returnTypeAsPrimitive.byteSize) {
-                this.addAnnotation("TypedIntrinsic(IntrinsicType.FLOAT_TRUNCATE)")
-            } else if (thisKind.byteSize < returnTypeAsPrimitive.byteSize) {
-                this.addAnnotation("TypedIntrinsic(IntrinsicType.FLOAT_EXTEND)")
+                this.signature.isExternal = true
+                when {
+                    returnTypeAsPrimitive in setOf(PrimitiveType.INT, PrimitiveType.LONG) -> {
+                        this.addAnnotation("GCUnsafeCall(\"Kotlin_${thisKind.capitalized}_to${this.signature.returnType}\")")
+                    }
+                    thisKind.byteSize > returnTypeAsPrimitive.byteSize -> {
+                        this.addAnnotation("TypedIntrinsic(IntrinsicType.FLOAT_TRUNCATE)")
+                    }
+                    thisKind.byteSize < returnTypeAsPrimitive.byteSize -> {
+                        this.addAnnotation("TypedIntrinsic(IntrinsicType.FLOAT_EXTEND)")
+                    }
+                }
             }
         }
     }
@@ -163,7 +166,7 @@ class NativePrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(w
         } else {
             "kotlin.native.internal.areEqualByValue(this, $argName)"
         }
-        "\t$argName is ${thisKind.capitalized} && $additionalCheck".addAsSingleLineBody(bodyOnNewLine = true)
+        "    $argName is ${thisKind.capitalized} && $additionalCheck".addAsSingleLineBody(bodyOnNewLine = true)
     }
 
     override fun MethodDescription.modifyGeneratedToString(thisKind: PrimitiveType) {
@@ -231,8 +234,14 @@ class NativePrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(w
     companion object {
         private fun String.toNativeOperator(): String {
             if (this == "div" || this == "rem") return "SIGNED_${this.uppercase(Locale.getDefault())}"
+            if (this == "compareTo") return "SIGNED_COMPARE_TO"
             if (this.startsWith("unary")) return "UNARY_${this.replace("unary", "").uppercase(Locale.getDefault())}"
             return this.uppercase(Locale.getDefault())
+        }
+
+        private fun MethodDescription.setAsExternal() {
+            addAnnotation("TypedIntrinsic(IntrinsicType.${this.signature.name.toNativeOperator()})")
+            this.signature.isExternal = true
         }
     }
 }

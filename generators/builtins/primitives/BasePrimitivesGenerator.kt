@@ -245,9 +245,6 @@ abstract class BasePrimitivesGenerator(private val writer: PrintWriter) : BuiltI
 
                     if (thisKind == PrimitiveType.INT || thisKind == PrimitiveType.LONG) {
                         this.addAll(generateBitShiftOperators(thisKind))
-                    }
-
-                    if (thisKind == PrimitiveType.INT || thisKind == PrimitiveType.LONG) {
                         this.addAll(generateBitwiseOperators(thisKind))
                     }
 

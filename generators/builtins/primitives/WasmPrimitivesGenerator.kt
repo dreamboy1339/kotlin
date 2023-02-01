@@ -190,23 +190,16 @@ class WasmPrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(wri
         }
 
         when (thisKind) {
-            PrimitiveType.BYTE -> when (returnTypeAsPrimitive) {
+            PrimitiveType.BYTE, PrimitiveType.SHORT -> when (returnTypeAsPrimitive) {
+                // byte to byte conversion impossible here due to earlier check on type equality
+                PrimitiveType.BYTE -> "this.toInt().toByte()".also { this.signature.isInline = true }
                 PrimitiveType.CHAR -> "reinterpretAsInt().reinterpretAsChar()"
                 PrimitiveType.SHORT -> "reinterpretAsInt().reinterpretAsShort()"
                 PrimitiveType.INT -> "reinterpretAsInt()"
                 PrimitiveType.LONG -> "wasm_i64_extend_i32_s(this.toInt())"
                 PrimitiveType.FLOAT -> "wasm_f32_convert_i32_s(this.toInt())"
                 PrimitiveType.DOUBLE -> "wasm_f64_convert_i32_s(this.toInt())"
-                else -> TODO()
-            }
-            PrimitiveType.SHORT -> when (returnTypeAsPrimitive) {
-                PrimitiveType.BYTE -> "this.toInt().toByte()".also { this.signature.isInline = true }
-                PrimitiveType.CHAR -> "reinterpretAsInt().reinterpretAsChar()"
-                PrimitiveType.INT -> "reinterpretAsInt()"
-                PrimitiveType.LONG -> "wasm_i64_extend_i32_s(this.toInt())"
-                PrimitiveType.FLOAT -> "wasm_f32_convert_i32_s(this.toInt())"
-                PrimitiveType.DOUBLE -> "wasm_f64_convert_i32_s(this.toInt())"
-                else -> TODO()
+                else -> throw IllegalArgumentException("Unsupported type $returnTypeAsPrimitive for generation conversion method from type $thisKind")
             }
             PrimitiveType.INT -> when (returnTypeAsPrimitive) {
                 PrimitiveType.BYTE -> "((this shl 24) shr 24).reinterpretAsByte()"
@@ -215,7 +208,7 @@ class WasmPrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(wri
                 PrimitiveType.LONG -> "wasm_i64_extend_i32_s(this)"
                 PrimitiveType.FLOAT -> "wasm_f32_convert_i32_s(this)"
                 PrimitiveType.DOUBLE -> "wasm_f64_convert_i32_s(this)"
-                else -> TODO()
+                else -> throw IllegalArgumentException("Unsupported type $returnTypeAsPrimitive for generation conversion method from type $thisKind")
             }
             PrimitiveType.LONG -> when (returnTypeAsPrimitive) {
                 PrimitiveType.BYTE, PrimitiveType.CHAR, PrimitiveType.SHORT -> "this.toInt().to${returnTypeAsPrimitive.capitalized}()"
@@ -223,25 +216,18 @@ class WasmPrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(wri
                 PrimitiveType.INT -> "wasm_i32_wrap_i64(this)"
                 PrimitiveType.FLOAT -> "wasm_f32_convert_i64_s(this)"
                 PrimitiveType.DOUBLE -> "wasm_f64_convert_i64_s(this)"
-                else -> TODO()
+                else -> throw IllegalArgumentException("Unsupported type $returnTypeAsPrimitive for generation conversion method from type $thisKind")
             }
-            PrimitiveType.FLOAT -> when (returnTypeAsPrimitive) {
+            in PrimitiveType.floatingPoint -> when (returnTypeAsPrimitive) {
                 PrimitiveType.BYTE, PrimitiveType.CHAR, PrimitiveType.SHORT -> "this.toInt().to${returnTypeAsPrimitive.capitalized}()"
                     .also { this.signature.isInline = true }
-                PrimitiveType.INT -> "wasm_i32_trunc_sat_f32_s(this)"
-                PrimitiveType.LONG -> "wasm_i64_trunc_sat_f32_s(this)"
-                PrimitiveType.DOUBLE -> "wasm_f64_promote_f32(this)"
-                else -> TODO()
-            }
-            PrimitiveType.DOUBLE -> when (returnTypeAsPrimitive) {
-                PrimitiveType.BYTE, PrimitiveType.CHAR, PrimitiveType.SHORT -> "this.toInt().to${returnTypeAsPrimitive.capitalized}()"
-                    .also { this.signature.isInline = true }
-                PrimitiveType.INT -> "wasm_i32_trunc_sat_f64_s(this)"
-                PrimitiveType.LONG -> "wasm_i64_trunc_sat_f64_s(this)"
+                PrimitiveType.INT -> "wasm_i32_trunc_sat_${thisKind.prefixLowercase}_s(this)"
+                PrimitiveType.LONG -> "wasm_i64_trunc_sat_${thisKind.prefixLowercase}_s(this)"
                 PrimitiveType.FLOAT -> "wasm_f32_demote_f64(this)"
-                else -> TODO()
+                PrimitiveType.DOUBLE -> "wasm_f64_promote_f32(this)"
+                else -> throw IllegalArgumentException("Unsupported type $returnTypeAsPrimitive for generation conversion method from type $thisKind")
             }
-            else -> TODO()
+            else -> throw IllegalArgumentException("Unsupported type $thisKind to generate conversion methods")
         }.addAsSingleLineBody(bodyOnNewLine = false)
     }
 
