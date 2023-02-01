@@ -5,6 +5,8 @@
 
 package org.jetbrains.kotlin.fir
 
+import com.intellij.openapi.util.JDOMUtil
+import org.jdom.Element
 import org.jetbrains.kotlin.fir.scopes.ProcessorAction
 import org.jetbrains.kotlin.test.testFramework.KtUsefulTestCase
 import org.jetbrains.kotlin.types.AbstractTypeChecker
@@ -52,9 +54,6 @@ private fun NodeList.toList(): List<Node> {
     return list
 }
 
-
-private val Node.childNodesList get() = childNodes.toList()
-
 private val ROOT_PATH_PREFIX:String = System.getProperty("fir.bench.prefix", "/")
 private val OUTPUT_DIR_REGEX_FILTER:String = System.getProperty("fir.bench.filter", ".*")
 private val MODULE_NAME_FILTER: String? = System.getProperty("fir.bench.filter.name")
@@ -89,52 +88,43 @@ abstract class AbstractModularizedTest : KtUsefulTestCase() {
         AbstractTypeChecker.RUN_SLOW_ASSERTIONS = true
     }
 
-    private fun loadModule(file: File): ModuleData {
-
-        val factory = DocumentBuilderFactory.newInstance()
-        factory.isIgnoringComments = true
-        factory.isIgnoringElementContentWhitespace = true
-        val builder = factory.newDocumentBuilder()
-        val document = builder.parse(file)
-        val moduleElement = document.childNodes.item(0).childNodesList.first { it.nodeType == Node.ELEMENT_NODE }
-        val moduleName = moduleElement.attributes.getNamedItem("name").nodeValue
-        val outputDir = moduleElement.attributes.getNamedItem("outputDir").nodeValue
+    private fun loadModule(moduleElement: Element): ModuleData {
+        val outputDir = moduleElement.getAttribute("outputDir").value
+        val moduleName = moduleElement.getAttribute("name").value
         val moduleNameQualifier = outputDir.substringAfterLast("/")
         val javaSourceRoots = mutableListOf<JavaSourceRootData<String>>()
         val classpath = mutableListOf<String>()
         val sources = mutableListOf<String>()
         val friendDirs = mutableListOf<String>()
         val optInAnnotations = mutableListOf<String>()
-        val timestamp = moduleElement.attributes.getNamedItem("timestamp")?.nodeValue?.toLong() ?: 0
-        val jdkHome = moduleElement.attributes.getNamedItem("jdkHome")?.nodeValue
+        val timestamp = moduleElement.getAttribute("timestamp")?.longValue ?: 0
+        val jdkHome = moduleElement.getAttribute("jdkHome")?.value
         var modularJdkRoot: String? = null
         var isCommon = false
 
-        for (index in 0 until moduleElement.childNodes.length) {
-            val item = moduleElement.childNodes.item(index)
-
-            when (item.nodeName) {
+        for (item in moduleElement.children) {
+            when (item.name) {
                 "classpath" -> {
-                    val path = item.attributes.getNamedItem("path").nodeValue
+                    val path = item.getAttribute("path").value
                     if (path != outputDir) {
                         classpath += path
                     }
                 }
                 "friendDir" -> {
-                    val path = item.attributes.getNamedItem("path").nodeValue
+                    val path = item.getAttribute("path").value
                     friendDirs += path
                 }
                 "javaSourceRoots" -> {
                     javaSourceRoots +=
                         JavaSourceRootData(
-                            item.attributes.getNamedItem("path").nodeValue,
-                            item.attributes.getNamedItem("packagePrefix")?.nodeValue,
+                            item.getAttribute("path").value,
+                            item.getAttribute("packagePrefix")?.value,
                         )
                 }
-                "sources" -> sources += item.attributes.getNamedItem("path").nodeValue
+                "sources" -> sources += item.getAttribute("path").value
                 "commonSources" -> isCommon = true
-                "modularJdkRoot" -> modularJdkRoot = item.attributes.getNamedItem("path").nodeValue
-                "useOptIn" -> optInAnnotations += item.attributes.getNamedItem("annotation").nodeValue
+                "modularJdkRoot" -> modularJdkRoot = item.getAttribute("path").value
+                "useOptIn" -> optInAnnotations += item.getAttribute("annotation").value
             }
         }
 
@@ -154,6 +144,11 @@ abstract class AbstractModularizedTest : KtUsefulTestCase() {
         )
     }
 
+    private fun loadModuleDumpFile(file: File): List<ModuleData> {
+        val rootElement = JDOMUtil.load(file)
+        val modules = rootElement.getChildren("module")
+        return modules.map { node -> loadModule(node) }
+    }
 
     protected abstract fun beforePass(pass: Int)
     protected abstract fun afterPass(pass: Int)
@@ -172,7 +167,7 @@ abstract class AbstractModularizedTest : KtUsefulTestCase() {
         val files = root.listFiles() ?: emptyArray()
         val modules = files.filter { it.extension == "xml" }
             .sortedBy { it.lastModified() }
-            .map { loadModule(it) }
+            .flatMap { loadModuleDumpFile(it) }
             .sortedBy { it.timestamp }
             .filter { it.rawOutputDir.matches(filterRegex) }
             .filter { (moduleName == null) || it.name == moduleName }
