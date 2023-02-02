@@ -18,6 +18,7 @@ import org.jetbrains.kotlin.asJava.classes.lazyPub
 import org.jetbrains.kotlin.asJava.elements.KtLightIdentifier
 import org.jetbrains.kotlin.descriptors.annotations.AnnotationUseSiteTarget
 import org.jetbrains.kotlin.light.classes.symbol.*
+import org.jetbrains.kotlin.light.classes.symbol.annotations.SymbolLightSimpleAnnotation
 import org.jetbrains.kotlin.light.classes.symbol.annotations.allowedTargets
 import org.jetbrains.kotlin.light.classes.symbol.annotations.computeAnnotations
 import org.jetbrains.kotlin.light.classes.symbol.annotations.getJvmNameFromAnnotation
@@ -110,7 +111,8 @@ internal class SymbolLightAnnotationsMethod private constructor(
 
                     return useSiteTarget == AnnotationUseSiteTarget.PROPERTY || useSiteTarget == null && !isFromPrimaryConstructor
                 }
-                propertySymbol.computeAnnotations(
+
+                val computed = propertySymbol.computeAnnotations(
                     modifierList = modifierList,
                     nullability = NullabilityType.Unknown,
                 ) {
@@ -123,6 +125,9 @@ internal class SymbolLightAnnotationsMethod private constructor(
 
                     return@computeAnnotations it.useSiteTarget == AnnotationUseSiteTarget.PROPERTY || it.useSiteTarget == null && !isFromPrimaryConstructor
                 }
+                return@withSymbol if (computed.isNotEmpty())
+                    (computed + SymbolLightSimpleAnnotation("java.lang.Deprecated", modifierList))
+                else emptyList()
             }
         }
     }
