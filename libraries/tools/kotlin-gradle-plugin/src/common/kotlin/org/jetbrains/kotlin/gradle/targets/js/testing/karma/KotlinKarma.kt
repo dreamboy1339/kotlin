@@ -20,11 +20,14 @@ import org.jetbrains.kotlin.gradle.internal.processLogMessage
 import org.jetbrains.kotlin.gradle.internal.testing.TCServiceMessagesClientSettings
 import org.jetbrains.kotlin.gradle.internal.testing.TCServiceMessagesTestExecutionSpec
 import org.jetbrains.kotlin.gradle.internal.testing.TCServiceMessagesTestExecutor
+import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.gradle.plugin.PropertiesProvider
 import org.jetbrains.kotlin.gradle.plugin.PropertiesProvider.Companion.kotlinPropertiesProvider
 import org.jetbrains.kotlin.gradle.plugin.internal.MppTestReportHelper
 import org.jetbrains.kotlin.gradle.plugin.mpp.KotlinJsCompilation
-import org.jetbrains.kotlin.gradle.targets.js.*
+import org.jetbrains.kotlin.gradle.targets.js.NpmPackageVersion
+import org.jetbrains.kotlin.gradle.targets.js.RequiredKotlinJsDependency
+import org.jetbrains.kotlin.gradle.targets.js.appendConfigsFromDir
 import org.jetbrains.kotlin.gradle.targets.js.dsl.WebpackRulesDsl.Companion.webpackRulesContainer
 import org.jetbrains.kotlin.gradle.targets.js.internal.parseNodeJsStackTraceAsJvm
 import org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsRootPlugin
@@ -91,6 +94,7 @@ class KotlinKarma(
         progressReporterPathFilter = nodeRootPackageDir,
         webpackMajorVersion = webpackMajorVersion,
         rules = project.objects.webpackRulesContainer(),
+        experiments = mutableSetOf("topLevelAwait")
     )
 
     init {
@@ -194,6 +198,16 @@ class KotlinKarma(
     fun useChromeCanary() = useChromeLike("ChromeCanary")
 
     fun useChromeCanaryHeadless() = useChromeLike("ChromeCanaryHeadless")
+
+    fun useChromeCanaryHeadlessWasmGc() {
+        val chromeCanaryHeadlessWasmGc = "ChromeHeadlessWasmGc"
+
+        config.customLaunchers[chromeCanaryHeadlessWasmGc] = CustomLauncher("ChromeCanaryHeadless").apply {
+            flags.add("--js-flags=--experimental-wasm-gc")
+        }
+
+        useChromeLike(chromeCanaryHeadlessWasmGc)
+    }
 
     fun useDebuggableChrome() {
         val debuggableChrome = "DebuggableChrome"
@@ -353,8 +367,10 @@ class KotlinKarma(
     private fun addPreprocessor(name: String, predicate: (String) -> Boolean = { true }) {
         configurators.add {
             config.files.forEach {
-                if (predicate(it)) {
-                    config.preprocessors.getOrPut(it) { mutableListOf() }.add(name)
+                if (it is String) {
+                    if (predicate(it)) {
+                        config.preprocessors.getOrPut(it) { mutableListOf() }.add(name)
+                    }
                 }
             }
         }
@@ -366,10 +382,33 @@ class KotlinKarma(
         nodeJsArgs: MutableList<String>,
         debug: Boolean
     ): TCServiceMessagesTestExecutionSpec {
-        val file = task.inputFileProperty.get().asFile.toString()
+        val file = task.inputFileProperty.get().asFile
+        val fileString = file.toString()
 
         config.files.add(npmProject.require("kotlin-test-js-runner/kotlin-test-karma-runner.js"))
-        config.files.add(file)
+
+        if (compilation.platformType == KotlinPlatformType.wasm) {
+            val wasmFile = file.parentFile.resolve("${file.nameWithoutExtension}.wasm")
+            val wasmFileString = wasmFile.normalize().absolutePath
+            config.files.add(
+                KarmaFile(
+                    pattern = wasmFileString,
+                    included = false,
+                    served = true,
+                    watched = false
+                )
+            )
+            config.files.add(
+                createLoadWasm(file).normalize().absolutePath
+            )
+
+            config.proxies["/${wasmFile.name}"] = wasmFileString
+
+            config.customContextFile = npmProject.require("kotlin-test-js-runner/static/context.html")
+            config.customDebugFile = npmProject.require("kotlin-test-js-runner/static/debug.html")
+        } else {
+            config.files.add(fileString)
+        }
 
         if (debug) {
             config.singleRun = false
@@ -587,6 +626,27 @@ class KotlinKarma(
                     }
                 }
         }
+    }
+
+    private fun createLoadWasm(file: File): File {
+        val static = npmProject.dir.resolve("static").also {
+            it.mkdirs()
+        }
+        val loadJs = static.resolve("load.js")
+        loadJs.printWriter().use { writer ->
+            val relativePath = file.toRelativeString(static)
+            writer.println(
+                """
+                import exports from "$relativePath";
+
+                exports.startUnitTests();
+
+                window.__karma__.loaded();
+                """.trimIndent()
+            )
+        }
+
+        return loadJs
     }
 
     private fun Appendable.appendFromConfigDir() {
