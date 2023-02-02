@@ -146,10 +146,6 @@ abstract class AbstractModularizedTest : KtUsefulTestCase() {
         val rootElement = JDOMUtil.load(file)
         val modules = rootElement.getChildren("module")
         val arguments = rootElement.getChild("compilerArguments")?.let { loadCompilerArguments(it) }
-
-        if (modules.size > 1) {
-            Unit
-        }
         return modules.map { node -> loadModule(node).also { it.arguments = arguments } }
     }
 
