@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2022 JetBrains s.r.o. and Kotlin Programming Language contributors.
+ * Copyright 2010-2023 JetBrains s.r.o. and Kotlin Programming Language contributors.
  * Use of this source code is governed by the Apache 2.0 license that can be found in the license/LICENSE.txt file.
  */
 
@@ -30,6 +30,7 @@ var K2JVMCompilerArguments.classpathAsList: List<File>
         classpath = value.joinToString(separator = File.pathSeparator, transform = { it.path })
     }
 
+@Suppress("unused") // used in Maven compile runner
 fun makeIncrementally(
     cachesDir: File,
     sourceRoots: Iterable<File>,
@@ -49,7 +50,7 @@ fun makeIncrementally(
     withIC(args) {
         val useK2 = args.useK2 || LanguageVersion.fromVersionString(args.languageVersion)?.usesK2 == true
         val compiler =
-            if (useK2 && args.useFirIC && args.useFirLT /* TODO: move LT check into runner */)
+            if (useK2 && args.useFirIC && args.useFirLT /* TODO by @Ilya.Chernikov: move LT check into runner */)
                 IncrementalFirJvmCompilerRunner(
                     cachesDir,
                     buildReporter,
@@ -64,14 +65,14 @@ fun makeIncrementally(
                     cachesDir,
                     buildReporter,
                     // Use precise setting in case of non-Gradle build
-                    usePreciseJavaTracking = !useK2, // TODO: add fir-based java classes tracker when available and set this to true
+                    usePreciseJavaTracking = !useK2, // TODO by @Ilya.Chernikov: add fir-based java classes tracker when available and set this to true
                     buildHistoryFile = buildHistoryFile,
                     outputDirs = null,
                     modulesApiHistory = EmptyModulesApiHistory,
                     kotlinSourceFilesExtensions = kotlinExtensions,
                     classpathChanges = ClasspathChanges.ClasspathSnapshotDisabled
                 )
-        //TODO set properly
+        //TODO by @Ilya.Chernikov set properly
         compiler.compile(sourceFiles, args, messageCollector, changedFiles = null)
     }
 }

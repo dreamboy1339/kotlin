@@ -160,7 +160,6 @@ abstract class AbstractIncrementalCompilerRunnerTestBase<Args : CommonCompilerAr
     private fun incrementalMake(cacheDir: File, outDir: File, sourceRoots: List<File>, args: Args) =
         make(cacheDir, outDir, sourceRoots, args)
 
-    //TODO: refactor
     private fun rebuildAndCompareOutput(
         sourceRoots: List<File>,
         testDir: File,
@@ -179,10 +178,8 @@ abstract class AbstractIncrementalCompilerRunnerTestBase<Args : CommonCompilerAr
         val rebuildSucceeded = rebuildResult.exitCode == ExitCode.OK
         Assert.assertEquals("Rebuild exit code differs from incremental exit code", rebuildExpectedToSucceed, rebuildSucceeded)
 
-
         Assert.assertEquals("Compilation result differs", rebuildResult.exitCode, finalExitCode)
         if (finalExitCode != ExitCode.OK) {
-            // compare errors?
             return
         }
         if (rebuildSucceeded) {

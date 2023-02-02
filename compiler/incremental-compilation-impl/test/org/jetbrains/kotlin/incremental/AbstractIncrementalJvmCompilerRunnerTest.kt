@@ -53,6 +53,7 @@ abstract class AbstractIncrementalJvmCompilerRunnerTest : AbstractIncrementalCom
         }
     }
 
+    // extension of org.jetbrains.kotlin.incremental.CompilerRunnerUtilsKt.makeIncrementally for tests
     private fun testMakeIncrementally(
         cachesDir: File,
         sourceRoots: Iterable<File>,
@@ -72,7 +73,7 @@ abstract class AbstractIncrementalJvmCompilerRunnerTest : AbstractIncrementalCom
 
         withIC(args) {
             val compiler =
-                if (args.useK2 && args.useFirIC && args.useFirLT /* TODO: move LT check into runner */)
+                if (args.useK2 && args.useFirIC && args.useFirLT /* TODO by @Ilya.Chernikov: move LT check into runner */)
                     IncrementalFirJvmCompilerTestRunner(
                         cachesDir,
                         buildReporter,
@@ -88,7 +89,7 @@ abstract class AbstractIncrementalJvmCompilerRunnerTest : AbstractIncrementalCom
                         cachesDir,
                         buildReporter,
                         // Use precise setting in case of non-Gradle build
-                        usePreciseJavaTracking = !args.useK2, // TODO: add fir-based java classes tracker when available and set this to true
+                        usePreciseJavaTracking = !args.useK2, // TODO by @Ilya.Chernikov: add fir-based java classes tracker when available and set this to true
                         buildHistoryFile = buildHistoryFile,
                         outputDirs = null,
                         modulesApiHistory = EmptyModulesApiHistory,
@@ -96,7 +97,7 @@ abstract class AbstractIncrementalJvmCompilerRunnerTest : AbstractIncrementalCom
                         classpathChanges = ClasspathChanges.ClasspathSnapshotDisabled,
                         testLookupTracker = testLookupTracker
                     )
-            //TODO set properly
+            //TODO by @Ilya.Chernikov: set properly
             compiler.compile(sourceFiles, args, messageCollector, changedFiles = null)
         }
     }
