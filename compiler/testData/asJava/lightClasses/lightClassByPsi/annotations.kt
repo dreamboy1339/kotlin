@@ -64,4 +64,21 @@ class Example(@field:Ann val foo: String,    // annotate Java field
 
 class CtorAnnotations(@Anno val x: String, @param:Anno val y: String, val z: String)
 
+class ClassWithCompanion {
+    @Anno
+    val x = 1
+    companion object CompanionObject {
+        @Anno
+        val a = 1
+
+        @Anno
+        @JvmStatic
+        val b = 1
+
+        @Anno
+        @JvmField
+        val c = 1
+    }
+}
+
 // COMPILATION_ERRORS

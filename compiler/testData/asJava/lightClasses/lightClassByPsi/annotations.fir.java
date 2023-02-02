@@ -59,10 +59,52 @@ public abstract @interface AnnotatedAttribute /* AnnotatedAttribute*/ {
   public abstract java.lang.String x();//  x()
 }
 
+public final class ClassWithCompanion /* ClassWithCompanion*/ {
+  @kotlin.jvm.JvmField()
+  public static final int c = 1 /* initializer type: int */;
+
+  @org.jetbrains.annotations.NotNull()
+  public static final ClassWithCompanion.CompanionObject CompanionObject;
+
+  private final int x = 1 /* initializer type: int */;
+
+  private static final int a = 1 /* initializer type: int */;
+
+  private static final int b = 1 /* initializer type: int */;
+
+  @Anno()
+  public static void getX$annotations();//  getX$annotations()
+
+  public  ClassWithCompanion();//  .ctor()
+
+  public final int getX();//  getX()
+
+  public static final int getB();//  getB()
+
+  class CompanionObject ...
+}
+
 public static final class Companion /* AnnoWithCompanion.Companion*/ {
   private  Companion();//  .ctor()
 
   public final void foo();//  foo()
+}
+
+public static final class CompanionObject /* ClassWithCompanion.CompanionObject*/ {
+  @Anno()
+  public static void getA$annotations();//  getA$annotations()
+
+  @Anno()
+  public static void getB$annotations();//  getB$annotations()
+
+  @Anno()
+  public static void getC$annotations();//  getC$annotations()
+
+  private  CompanionObject();//  .ctor()
+
+  public final int getA();//  getA()
+
+  public final int getB();//  getB()
 }
 
 public final class CtorAnnotations /* CtorAnnotations*/ {
