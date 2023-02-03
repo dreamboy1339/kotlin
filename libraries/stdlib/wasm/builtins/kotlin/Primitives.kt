@@ -429,6 +429,7 @@ public class Byte private constructor(private val value: Byte) : Number(), Compa
     public override fun toString(): String = 
     	this.toInt().toString()
 
+    @kotlin.internal.IntrinsicConstEvaluation
     @WasmOp(WasmOp.I32_EQ)
     public fun equals(other: Byte): Boolean = 
     	implementedAsIntrinsic
@@ -859,6 +860,7 @@ public class Short private constructor(private val value: Short) : Number(), Com
     public override fun toString(): String = 
     	this.toInt().toString()
 
+    @kotlin.internal.IntrinsicConstEvaluation
     @WasmOp(WasmOp.I32_EQ)
     public fun equals(other: Short): Boolean = 
     	implementedAsIntrinsic
@@ -1352,6 +1354,7 @@ public class Int private constructor(private val value: Int) : Number(), Compara
     public override fun toString(): String = 
     	itoa32(this, 10)
 
+    @kotlin.internal.IntrinsicConstEvaluation
     @WasmOp(WasmOp.I32_EQ)
     public fun equals(other: Int): Boolean = 
     	implementedAsIntrinsic
@@ -1860,6 +1863,7 @@ public class Long private constructor(private val value: Long) : Number(), Compa
     public override fun toString(): String = 
     	itoa64(this, 10)
 
+    @kotlin.internal.IntrinsicConstEvaluation
     @WasmOp(WasmOp.I64_EQ)
     public fun equals(other: Long): Boolean = 
     	implementedAsIntrinsic
@@ -2259,6 +2263,7 @@ public class Float private constructor(private val value: Float) : Number(), Com
     public override fun toString(): String = 
     	dtoa(this.toDouble())
 
+    @kotlin.internal.IntrinsicConstEvaluation
     public inline fun equals(other: Float): Boolean = toBits() == other.toBits()
 
     public override inline fun hashCode(): Int = toBits()
@@ -2656,6 +2661,7 @@ public class Double private constructor(private val value: Double) : Number(), C
     public override fun toString(): String = 
     	dtoa(this)
 
+    @kotlin.internal.IntrinsicConstEvaluation
     public inline fun equals(other: Double): Boolean = toBits() == other.toBits()
 
     public override inline fun hashCode(): Int = toBits().hashCode()

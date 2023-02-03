@@ -435,6 +435,7 @@ public final class Byte private constructor() : Number(), Comparable<Byte> {
     @GCUnsafeCall("Kotlin_Byte_toString")
     external public override fun toString(): String
 
+    @kotlin.internal.IntrinsicConstEvaluation
     public fun equals(other: Byte): Boolean = kotlin.native.internal.areEqualByValue(this, other)
 
     public override fun hashCode(): Int {
@@ -864,6 +865,7 @@ public final class Short private constructor() : Number(), Comparable<Short> {
     @GCUnsafeCall("Kotlin_Short_toString")
     external public override fun toString(): String
 
+    @kotlin.internal.IntrinsicConstEvaluation
     public fun equals(other: Short): Boolean = kotlin.native.internal.areEqualByValue(this, other)
 
     public override fun hashCode(): Int {
@@ -1345,6 +1347,7 @@ public final class Int private constructor() : Number(), Comparable<Int> {
     @GCUnsafeCall("Kotlin_Int_toString")
     external public override fun toString(): String
 
+    @kotlin.internal.IntrinsicConstEvaluation
     public fun equals(other: Int): Boolean = kotlin.native.internal.areEqualByValue(this, other)
 
     public override fun hashCode(): Int {
@@ -1830,6 +1833,7 @@ public final class Long private constructor() : Number(), Comparable<Long> {
     @GCUnsafeCall("Kotlin_Long_toString")
     external public override fun toString(): String
 
+    @kotlin.internal.IntrinsicConstEvaluation
     public fun equals(other: Long): Boolean = kotlin.native.internal.areEqualByValue(this, other)
 
     public override fun hashCode(): Int {
@@ -2223,6 +2227,7 @@ public final class Float private constructor() : Number(), Comparable<Float> {
     @kotlin.internal.IntrinsicConstEvaluation
     public override fun toString(): String = NumberConverter.convert(this)
 
+    @kotlin.internal.IntrinsicConstEvaluation
     public fun equals(other: Float): Boolean = toBits() == other.toBits()
 
     public override fun hashCode(): Int = toBits()
@@ -2620,6 +2625,7 @@ public final class Double private constructor() : Number(), Comparable<Double> {
     @kotlin.internal.IntrinsicConstEvaluation
     public override fun toString(): String = NumberConverter.convert(this)
 
+    @kotlin.internal.IntrinsicConstEvaluation
     public fun equals(other: Double): Boolean = toBits() == other.toBits()
 
     public override fun hashCode(): Int = toBits().hashCode()

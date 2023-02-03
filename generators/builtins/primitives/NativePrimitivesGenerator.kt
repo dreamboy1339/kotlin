@@ -198,6 +198,7 @@ class NativePrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(w
 
         val customEquals = MethodDescription(
             doc = null,
+            annotations = mutableListOf("kotlin.internal.IntrinsicConstEvaluation"),
             signature = MethodSignature(
                 name = "equals",
                 arg = MethodParameter("other", thisKind.capitalized),

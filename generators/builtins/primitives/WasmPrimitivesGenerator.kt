@@ -273,6 +273,7 @@ class WasmPrimitivesGenerator(writer: PrintWriter) : BasePrimitivesGenerator(wri
 
         val customEquals = MethodDescription(
             doc = null,
+            annotations = mutableListOf("kotlin.internal.IntrinsicConstEvaluation"),
             signature = MethodSignature(
                 isInline = thisKind in PrimitiveType.floatingPoint,
                 name = "equals",
