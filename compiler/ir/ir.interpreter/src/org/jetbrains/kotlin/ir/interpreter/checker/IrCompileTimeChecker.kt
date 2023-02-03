@@ -99,6 +99,16 @@ class IrCompileTimeChecker(
         if (mode == EvaluationMode.ONLY_INTRINSIC_CONST && expression.origin == IrStatementOrigin.WHEN) {
             return expression.statements.all { it.accept(this, null) }
         }
+
+        // `IrReturnableBlock` will be created from IrCall after inline. We should do basically the same check as for IrCall.
+        // TODO after JVM inline MR 8122 will be pushed check original IrCall instead of this.
+        if (expression is IrReturnableBlock) {
+            val owner = expression.inlineFunctionSymbol?.owner ?: return visitStatements(expression.statements)
+            return mode.canEvaluateFunction(owner, null) && owner.visitBodyIfNeeded() && expression.asVisited {
+                expression.statements.all { it.accept(this, null) }
+            }
+        }
+
         return visitStatements(expression.statements)
     }
 

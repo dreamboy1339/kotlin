@@ -91,7 +91,8 @@ internal class DefaultCallInterceptor(override val interpreter: IrInterpreter) :
                 verify(handleIntrinsicMethods(irConstructor)) { "Unsupported intrinsic constructor: ${irConstructor.render()}" }
             }
             irClass.defaultType.isUnsignedType() -> {
-                val propertySymbol = irClass.declarations.single { it is IrProperty }.symbol
+                // check for name is a hack needed for Native; in UInt, for example, we have additional property "$companion"
+                val propertySymbol = irClass.declarations.single { it is IrProperty && it.name.asString() == "data" }.symbol
                 callStack.pushState(receiver.apply { this.setField(propertySymbol, args.single()) })
             }
             else -> defaultAction()
