@@ -88,11 +88,12 @@ public static final class Companion /* AnnoWithCompanion.Companion*/ {
 public static final class CompanionObject /* ClassWithCompanion.CompanionObject*/ {
   @Anno()
   @java.lang.Deprecated()
-  public static void getA$annotations();//  getA$annotations()
+  @kotlin.jvm.JvmStatic()
+  public static void getB$annotations();//  getB$annotations()
 
   @Anno()
   @java.lang.Deprecated()
-  public static void getB$annotations();//  getB$annotations()
+  public static void getA$annotations();//  getA$annotations()
 
   @Anno()
   @java.lang.Deprecated()

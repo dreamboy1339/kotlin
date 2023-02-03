@@ -11,6 +11,7 @@ public final class Test /* Test*/ {
   public final void setBar(@MyAnnotation3() @org.jetbrains.annotations.NotNull() java.lang.String);//  setBar(java.lang.String)
 
   @MyAnnotation4()
+  @java.lang.Deprecated()
   public static void getBar$annotations();//  getBar$annotations()
 
   @org.jetbrains.annotations.NotNull()

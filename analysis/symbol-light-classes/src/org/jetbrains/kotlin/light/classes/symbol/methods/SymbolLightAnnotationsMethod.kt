@@ -116,8 +116,6 @@ internal class SymbolLightAnnotationsMethod private constructor(
                     modifierList = modifierList,
                     nullability = NullabilityType.Unknown,
                 ) {
-                    if (it.classId?.asFqNameString() == "kotlin.jvm.JvmStatic") return@computeAnnotations false
-
                     it.allowedTargets?.let { targets ->
                         if (AnnotationTarget.PROPERTY !in targets) return@computeAnnotations false
                         if (it.useSiteTarget == null) return@computeAnnotations !(isFromPrimaryConstructor && AnnotationTarget.VALUE_PARAMETER in targets)
