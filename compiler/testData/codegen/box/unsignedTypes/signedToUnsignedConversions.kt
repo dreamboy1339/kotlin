@@ -37,7 +37,7 @@ fun takeUBytes(@ImplicitIntegerCoercion vararg u: UByte) {}
 
 fun takeLong(@ImplicitIntegerCoercion l: Long) {}
 
-fun test() {
+fun box(): String {
     takeUByte(IMPLICIT_INT)
     takeUByte(EXPLICIT_INT)
 
@@ -52,4 +52,5 @@ fun test() {
 
 //    such kind of conversions (Int <-> Long) actually are not supported
 //    takeLong(IMPLICIT_INT)
+    return "OK"
 }
