@@ -13,6 +13,7 @@ evaluationDependsOnChildren()
 fun pKotlinBig() = project("kotlin_big").ext
 
 val outputDir = file(findProperty("docsBuildDir") as String? ?: "$buildDir/doc")
+val inputDirPrevious = file(findProperty("docsPreviousVersionsDir") as String? ?: "$outputDir/previous")
 val outputDirPartial = outputDir.resolve("partial")
 val kotlin_root: String by pKotlinBig()
 val kotlin_libs: String by pKotlinBig()
@@ -424,7 +425,7 @@ fun createAllLibsVersionedDocTask(version: String, isLatest: Boolean, vararg lib
             outputDirectory.set(outputDirLatest.resolve(moduleDirName))
             with(pluginsMapConfiguration) {
                 put("org.jetbrains.dokka.base.DokkaBase"                      , """{ "templatesDir": "$templatesDir" }""")
-                put("org.jetbrains.dokka.versioning.VersioningPlugin"         , """{ "version": "$version", "olderVersionsDir": "${outputDirPrevious.resolve(moduleDirName).invariantSeparatorsPath}" }""")
+                put("org.jetbrains.dokka.versioning.VersioningPlugin"         , """{ "version": "$version", "olderVersionsDir": "${inputDirPrevious.resolve(moduleDirName).invariantSeparatorsPath}" }""")
             }
         } else {
             outputDirectory.set(outputDirPrevious.resolve(moduleDirName).resolve(version))
