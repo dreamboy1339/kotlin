@@ -177,12 +177,10 @@ fun createStdLibVersionedDocTask(version: String, isLatest: Boolean) =
                         sourceRoots.from("$kotlin_stdlib_dir/src")
                         sourceRoots.from("$kotlin_stdlib_dir/unsigned/src")
                     }
-                    perPackageOption {
-                        matchingRegex.set("org.w3c(\$|\\.).*")
+                    perPackageOption("org.w3c") {
                         reportUndocumented.set(false)
                     }
-                    perPackageOption {
-                        matchingRegex.set("org.khronos(\$|\\.).*")
+                    perPackageOption("org.khronos") {
                         reportUndocumented.set(false)
                     }
                 }
@@ -201,8 +199,7 @@ fun createStdLibVersionedDocTask(version: String, isLatest: Boolean) =
                     sourceRoots.from("$kotlin_native_root/Interop/JsRuntime/src/main/kotlin")
                     sourceRoots.from("$kotlin_native_root/runtime/src/main/kotlin")
                     sourceRoots.from("$kotlin_stdlib_dir/native-wasm/src")
-                    perPackageOption {
-                        matchingRegex.set("kotlin.test(\$|\\.).*")
+                    perPackageOption("kotlin.test") {
                         suppress.set(true)
                     }
                 }
@@ -215,16 +212,11 @@ fun createStdLibVersionedDocTask(version: String, isLatest: Boolean) =
                 languageVersion.set(kotlinLanguageVersion)
                 samples.from(stdlibSamples.toString())
                 suppressedPackages.forEach { packageName ->
-                    perPackageOption {
-                        matchingRegex.set("${packageName.replace(".", "\\.")}(\$|\\..*)")
+                    perPackageOption(packageName) {
                         suppress.set(true)
                     }
                 }
-                sourceLink {
-                    localDirectory.set(file(localRoot))
-                    remoteUrl.set(baseUrl)
-                    remoteLineSuffix.set("#L")
-                }
+                sourceLinksFromRoot()
             }
         }
     }
@@ -373,11 +365,7 @@ fun createKotlinTestVersionedDocTask(version: String, isLatest: Boolean, stdlibD
                 includes.from(kotlinTestIncludeMd)
                 languageVersion.set(kotlinLanguageVersion)
                 noStdlibLink.set(true)
-                sourceLink {
-                    localDirectory.set(file(localRoot))
-                    remoteUrl.set(baseUrl)
-                    remoteLineSuffix.set("#L")
-                }
+                sourceLinksFromRoot()
                 externalDocumentationLink {
                     url.set(URL("https://kotlinlang.org/api/latest/jvm/stdlib/"))
                     packageListUrl.set(stdlibPackageList)
@@ -386,6 +374,19 @@ fun createKotlinTestVersionedDocTask(version: String, isLatest: Boolean, stdlibD
         }
     }
 
+fun GradleDokkaSourceSetBuilder.perPackageOption(packageNamePrefix: String, action: Action<in GradlePackageOptionsBuilder>) =
+    perPackageOption {
+        matchingRegex.set(Regex.escape(packageNamePrefix) + "(\$|\\..*)")
+        action(this)
+    }
+
+fun GradleDokkaSourceSetBuilder.sourceLinksFromRoot() {
+    sourceLink {
+        localDirectory.set(file(localRoot))
+        remoteUrl.set(baseUrl)
+        remoteLineSuffix.set("#L")
+    }
+}
 
 gradle.projectsEvaluated {
     val versions = listOf("1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8")
