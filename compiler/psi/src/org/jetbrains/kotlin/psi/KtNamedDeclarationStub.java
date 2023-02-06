@@ -41,21 +41,24 @@ abstract class KtNamedDeclarationStub<T extends KotlinStubWithFqName<?>> extends
         super(node);
     }
 
+    /**
+     * For KtNamedDeclarationStub descendants we save raw (i.e. possibly quoted) name in stubs
+     */
     @Override
     public String getName() {
+        String rawName = getRawName();
+        return rawName != null ? KtPsiUtil.unquoteIdentifier(rawName) : null;
+    }
+
+    @Nullable
+    public String getRawName() {
         T stub = getStub();
         if (stub != null) {
             return stub.getName();
         }
 
         PsiElement identifier = getNameIdentifier();
-        if (identifier != null) {
-            String text = identifier.getText();
-            return text != null ? KtPsiUtil.unquoteIdentifier(text) : null;
-        }
-        else {
-            return null;
-        }
+        return identifier != null ? identifier.getText() : null;
     }
 
     @Override

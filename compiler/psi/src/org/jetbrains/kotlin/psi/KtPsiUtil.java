@@ -135,11 +135,11 @@ public class KtPsiUtil {
 
     @NotNull
     public static String unquoteIdentifier(@NotNull String quoted) {
-        if (quoted.indexOf('`') < 0) {
+        if (quoted.isEmpty() || quoted.charAt(0) != '`') {
             return quoted;
         }
 
-        if (quoted.startsWith("`") && quoted.endsWith("`") && quoted.length() >= 2) {
+        if (quoted.endsWith("`") && quoted.length() >= 2) {
             return quoted.substring(1, quoted.length() - 1);
         }
         else {

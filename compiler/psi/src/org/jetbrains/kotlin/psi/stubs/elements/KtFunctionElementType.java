@@ -49,7 +49,7 @@ public class KtFunctionElementType extends KtStubElementType<KotlinFunctionStub,
         boolean hasBlockBody = psi.hasBlockBody();
         boolean hasBody = psi.hasBody();
         return new KotlinFunctionStubImpl(
-                (StubElement<?>) parentStub, StringRef.fromString(psi.getName()), isTopLevel, fqName,
+                (StubElement<?>) parentStub, StringRef.fromString(psi.getRawName()), isTopLevel, fqName,
                 isExtension, hasBlockBody, hasBody, psi.hasTypeParameterListBeforeFunctionName(),
                 psi.mayHaveContract()
         );

@@ -31,8 +31,8 @@ class KtObjectDeclaration : KtClassOrObject {
     private val _stub: KotlinObjectStub?
         get() = stub as? KotlinObjectStub
 
-    override fun getName(): String? {
-        super.getName()?.let { return it }
+    override fun getRawName(): String? {
+        super.getRawName()?.let { return it }
 
         if (isCompanion() && !isTopLevel()) {
             //NOTE: a hack in PSI that simplifies writing frontend code
