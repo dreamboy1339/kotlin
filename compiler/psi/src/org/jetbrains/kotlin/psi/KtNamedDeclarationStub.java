@@ -8,6 +8,7 @@ package org.jetbrains.kotlin.psi;
 import com.google.common.collect.ImmutableSet;
 import com.intellij.lang.ASTNode;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.NlsSafe;
 import com.intellij.psi.JavaPsiFacade;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiPackage;
@@ -42,7 +43,7 @@ abstract class KtNamedDeclarationStub<T extends KotlinStubWithFqName<?>> extends
     }
 
     /**
-     * For KtNamedDeclarationStub descendants we save raw (i.e. possibly quoted) name in stubs
+     * For KtNamedDeclarationStub descendants we save raw name in stubs
      */
     @Override
     public String getName() {
@@ -50,7 +51,11 @@ abstract class KtNamedDeclarationStub<T extends KotlinStubWithFqName<?>> extends
         return rawName != null ? KtPsiUtil.unquoteIdentifier(rawName) : null;
     }
 
+    /**
+     * @return raw name (i.e. possibly quoted) or null if the name identifier is missing
+     */
     @Nullable
+    @NlsSafe
     public String getRawName() {
         T stub = getStub();
         if (stub != null) {
