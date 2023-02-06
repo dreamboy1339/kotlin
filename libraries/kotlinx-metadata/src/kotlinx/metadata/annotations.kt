@@ -38,6 +38,8 @@ sealed class KmAnnotationArgument {
      * A kind of annotation argument, whose value is directly accessible via [value].
      * This is possible for annotation arguments of primitive types, unsigned types and strings.
      *
+     * For example, in `@Foo("bar")`, argument of `Foo` is a [StringValue] with [value] equal to `bar`.
+     *
      * @param T the type of the value of this argument
      */
     sealed class LiteralValue<out T : Any> : KmAnnotationArgument() {
@@ -82,6 +84,9 @@ sealed class KmAnnotationArgument {
     /**
      * An annotation argument with an enumeration type.
      *
+     * For example, in `@Foo(MyEnum.OPTION_A)`, argument of `Foo` is an `EnumValue`
+     * with [enumClassName] `MyEnum` and [enumEntryName] `OPTION_A`.
+     *
      * @property enumClassName FQ name of the enum class
      * @property enumEntryName Name of the enum entry
      */
@@ -90,13 +95,25 @@ sealed class KmAnnotationArgument {
     /**
      * An annotation argument which is another annotation value.
      *
+     * For example, with the following classes:
+     * ```
+     * annotation class Bar(val s: String)
+     *
+     * annotation class Foo(val b: Bar)
+     * ```
+     * It is possible to apply such annotation: `@Foo(Bar("baz"))`. In this case, argument `Foo.b` is represented by
+     * `AnnotationValue` which [annotation] property contains all necessary information: the fact that it is a `Bar` annotation ([KmAnnotation.className])
+     * and that it has a "baz" argument ([KmAnnotation.arguments]).
+     *
      * @property annotation Annotation instance with all its arguments.
      */
     data class AnnotationValue(val annotation: KmAnnotation) : KmAnnotationArgument()
 
     /**
-     * An annotation argument with an array type, i.e. several values of one arbitrary type —
-     * for example, `@Foo(["a", "b", "c"])`.
+     * An annotation argument with an array type, i.e. several values of one arbitrary type.
+     *
+     * For example, in `@Foo(["a", "b", "c"])` argument of `Foo` is an `ArrayValue` with [elements]
+     * being a list of three [StringValue] elements: "a", "b", and "c" (without quotes).
      *
      * Don't confuse with [ArrayKClassValue], which represents KClass value.
      *
@@ -105,12 +122,14 @@ sealed class KmAnnotationArgument {
     data class ArrayValue(val elements: List<KmAnnotationArgument>) : KmAnnotationArgument()
 
     /**
-     * An annotation argument of KClass type, for example, `String::class`.
+     * An annotation argument of KClass type.
      *
-     * All of the KClasses, except `kotlin.Array`, are represented by this class.
+     * For example, in `@Foo(String::class)` argument of `Foo` is a `KClassValue` which [className] is `kotlin/String`.
+     *
+     * All the KClasses, except `kotlin.Array`, are represented by this class.
      * Arrays are a specific case and represented by [ArrayKClassValue] — see its documentation for details.
      *
-     * @property className FQ name of the referenced class, e.g. `kotlin/String` in case of `@Foo(String::class)`.
+     * @property className FQ name of the referenced class.
      */
     @Suppress("DEPRECATION_ERROR")
     data class KClassValue @Deprecated(
