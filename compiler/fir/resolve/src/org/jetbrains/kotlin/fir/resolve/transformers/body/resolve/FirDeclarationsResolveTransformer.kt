@@ -8,6 +8,7 @@ package org.jetbrains.kotlin.fir.resolve.transformers.body.resolve
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Visibility
+import org.jetbrains.kotlin.descriptors.annotations.AnnotationUseSiteTarget
 import org.jetbrains.kotlin.fakeElement
 import org.jetbrains.kotlin.fir.*
 import org.jetbrains.kotlin.fir.declarations.*
@@ -194,8 +195,38 @@ open class FirDeclarationsResolveTransformer(transformer: FirAbstractBodyResolve
                     property.replaceControlFlowGraphReference(FirControlFlowGraphReferenceImpl(it))
                 }
             }
+            if (!implicitTypeOnly && property.source?.kind == KtFakeSourceElementKind.PropertyFromParameter) {
+                removeDuplicateAnnotationsOfPrimaryConstructorElement(property)
+            }
             property
         }
+    }
+
+    /**
+     * In a scenario like
+     *
+     * ```
+     * annotation class Ann
+     * class Foo(@Ann val x: String)
+     * ```
+     *
+     * both, the primary ctor value parameter and the property `x` will be annotated with `@Ann`. This is due to the fact, that the
+     * annotation needs to be resolved in order to determine its annotation targets. After the resolution was finished, we remove
+     * annotations from the wrong target if they don't explicitly specify the use-site target (in which case they shouldn't have been added
+     * to the element in the raw FIR).
+     *
+     * For value parameters, we remove the annotation if the targets don't include [AnnotationUseSiteTarget.CONSTRUCTOR_PARAMETER].
+     * For properties, we remove the annotation, if the targets include [AnnotationUseSiteTarget.CONSTRUCTOR_PARAMETER].
+     */
+    private fun removeDuplicateAnnotationsOfPrimaryConstructorElement(element: FirVariable) {
+        val isParameter = element is FirValueParameter
+        element.replaceAnnotations(element.annotations.filter {
+            it.useSiteTarget != null ||
+                    // equivalent to
+                    // CONSTRUCTOR_PARAMETER in targets && isParameter ||
+                    // CONSTRUCTOR_PARAMETER !in targets && !isParameter
+                    AnnotationUseSiteTarget.CONSTRUCTOR_PARAMETER in it.useSiteTargetsFromMetaAnnotation(session) == isParameter
+        })
     }
 
     fun FirProperty.getDefaultAccessorStatus(): FirDeclarationStatus {
@@ -681,6 +712,15 @@ open class FirDeclarationsResolveTransformer(transformer: FirAbstractBodyResolve
 
         val controlFlowGraphReference = dataFlowAnalyzer.exitFunction(constructor)
         constructor.replaceControlFlowGraphReference(controlFlowGraphReference)
+
+        if (constructor.isPrimary) {
+            for (valueParameter in constructor.valueParameters) {
+                if (valueParameter.correspondingProperty != null) {
+                    removeDuplicateAnnotationsOfPrimaryConstructorElement(valueParameter)
+                }
+            }
+        }
+
         return constructor
     }
 

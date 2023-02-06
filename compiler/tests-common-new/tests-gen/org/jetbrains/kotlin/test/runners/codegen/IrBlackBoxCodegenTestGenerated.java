@@ -372,6 +372,12 @@ public class IrBlackBoxCodegenTestGenerated extends AbstractIrBlackBoxCodegenTes
         }
 
         @Test
+        @TestMetadata("targetOnPrimaryCtorParameter.kt")
+        public void testTargetOnPrimaryCtorParameter() throws Exception {
+            runTest("compiler/testData/codegen/box/annotations/targetOnPrimaryCtorParameter.kt");
+        }
+
+        @Test
         @TestMetadata("typeAnnotationOnJdk6.kt")
         public void testTypeAnnotationOnJdk6() throws Exception {
             runTest("compiler/testData/codegen/box/annotations/typeAnnotationOnJdk6.kt");
