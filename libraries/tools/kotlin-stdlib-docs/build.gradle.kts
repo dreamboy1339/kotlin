@@ -21,7 +21,7 @@ val kotlin_native_root = file("$kotlin_root/kotlin-native").absolutePath
 val github_revision: String by pKotlinBig()
 val localRoot = kotlin_root
 val baseUrl = URL("https://github.com/JetBrains/kotlin/tree/$github_revision")
-val templatesDir = file("$projectDir/templates").invariantSeparatorsPath
+val templatesDir = file(findProperty("templatesDir") as String? ?: "$projectDir/templates").invariantSeparatorsPath
 
 val cleanDocs by tasks.registering(Delete::class) {
     delete(outputDir)
