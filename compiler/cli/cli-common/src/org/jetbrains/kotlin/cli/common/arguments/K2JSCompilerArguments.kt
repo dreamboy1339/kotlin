@@ -388,6 +388,13 @@ class K2JSCompilerArguments : CommonCompilerArguments() {
             collector.deprecationWarn(useDeprecatedLegacyCompiler, false, "-Xuse-deprecated-legacy-compiler")
         }
 
+        if (irPerFile && moduleKind != MODULE_ES) {
+            collector.report(
+                CompilerMessageSeverity.ERROR,
+                "Per-file compilation can't be used with any `moduleKind` except `es` (ECMAScript Modules)"
+            )
+        }
+
         return super.configureAnalysisFlags(collector, languageVersion).also {
             it[allowFullyQualifiedNameInKClass] = wasm && wasmKClassFqn //Only enabled WASM BE supports this flag
         }
