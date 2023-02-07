@@ -17,6 +17,7 @@ import org.jetbrains.kotlin.fir.declarations.builder.buildOuterClassTypeParamete
 import org.jetbrains.kotlin.fir.declarations.builder.buildRegularClass
 import org.jetbrains.kotlin.fir.declarations.origin
 import org.jetbrains.kotlin.fir.declarations.utils.isLocal
+import org.jetbrains.kotlin.fir.extensions.FirDeclarationGenerationExtension
 import org.jetbrains.kotlin.fir.extensions.FirExtension
 import org.jetbrains.kotlin.fir.moduleData
 import org.jetbrains.kotlin.fir.scopes.kotlinScopeProvider
@@ -98,10 +99,8 @@ public class ClassBuildingContext(
 
 /**
  * Creates top-level class with given [classId]
- * If class is generated in [FirDeclarationGenerationExtension], all its declarations should be generated
- *   using methods from [FirDeclarationGenerationExtension]
- * If class is generated in [FirDeclarationsForMetadataProviderExtension] all its declarations should be manually added right to
- *   FIR node of created class
+ * All declarations in class should be generated using methods from [FirDeclarationGenerationExtension]
+ * Generation of top-level classes with [FirDeclarationsForMetadataProviderExtension] is prohibited
  *
  * If no supertypes added then [kotlin.Any] supertype will be added automatically
  *
