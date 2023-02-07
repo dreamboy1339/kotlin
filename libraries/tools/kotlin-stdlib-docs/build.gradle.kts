@@ -232,14 +232,15 @@ fun createKotlinReflectVersionedDocTask(version: String, isLatest: Boolean) =
         moduleName.set("kotlin-reflect")
 
         val moduleDirName = "kotlin-reflect"
-        pluginsMapConfiguration
-            .put("org.jetbrains.dokka.versioning.VersioningPlugin"         , """{ "version": "$version" }""")
+        with(pluginsMapConfiguration) {
+            put("org.jetbrains.dokka.base.DokkaBase", """{ "templatesDir": "$templatesDir" }""")
+            put("org.jetbrains.dokka.versioning.VersioningPlugin", """{ "version": "$version" }""")
+        }
         if (isLatest) {
             outputDirectory.set(file("$outputDirPartial/latest").resolve(moduleDirName))
         } else {
             outputDirectory.set(file("$outputDirPartial/previous").resolve(moduleDirName).resolve(version))
-            pluginsMapConfiguration
-                .put("org.jetbrains.dokka.kotlinlang.VersionFilterPlugin"      , """{ "targetVersion": "$version" }""")
+            pluginsMapConfiguration.put("org.jetbrains.dokka.kotlinlang.VersionFilterPlugin", """{ "targetVersion": "$version" }""")
         }
 
         dokkaSourceSets {
