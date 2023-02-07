@@ -13,14 +13,14 @@ import org.jetbrains.kotlin.name.FqName
 import kotlin.reflect.KClass
 
 /**
- * This extensions can be used to provide information about declarations, which should be written in Kotlin metadata,
+ * This extension can be used to provide information about declarations, which should be written in Kotlin metadata (i.e. be part of a module's ABI),
  *   but for some reason can not (or should not) be generated with [FirDeclarationGenerationExtension]
  *
  * Example: assume your plugin generates some constructor in [IrGenerationExtension] which have value parameters matching
- *   all properties of a class, and this constructor is used only as implementation detail (so the only actor who accesses it
- *   is a plugin itself). You want to use this constructor from other module, so it should be presented in metadata. But you
+ *   all properties of a class, and this constructor is used only as an implementation detail (so the only actor who accesses it
+ *   is a plugin itself). The constructor should be accessible from another module, so it should be present in the metadata. But you
  *   can not generate this constructor in [FirDeclarationGenerationExtension], because it depends on types of properties,
- *   which may be not accessible at the moment of constructor creation.
+ *   which may be not resolved at the moment of constructor creation.
  *
  *
  *   // MODULE: a
@@ -47,10 +47,10 @@ import kotlin.reflect.KClass
  *       //  can reference it during generation of constructor (2)
  *  }
  *
- * All declarations, provided by this extension should be fully resolved and contain all sub declarations if they exist.
+ * All declarations provided by this extension should be fully resolved and contain all sub declarations if they exist.
  *   E.g. if you want to provide some class then this class should contain all declarations of this class you want to be
  *   present in metadata in `declarations` field of a `FirRegularClass`.
- *   [FirDeclarationGenerationExtension] won't be called for classes, provided by this extension
+ *   [FirDeclarationGenerationExtension] won't be called for classes provided by this extension.
  */
 abstract class FirDeclarationsForMetadataProviderExtension(session: FirSession) : FirExtension(session) {
     companion object {

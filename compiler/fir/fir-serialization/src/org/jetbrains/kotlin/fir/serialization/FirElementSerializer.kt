@@ -158,7 +158,7 @@ class FirElementSerializer private constructor(
                     is FirConstructor -> providedConstructors += declaration
                     is FirCallableDeclaration -> providedCallables += declaration
                     is FirClassLikeDeclaration -> providedNestedClassifiers += declaration.symbol
-                    else -> error("Unsupported top-level declaration type: ${declaration.render()}")
+                    else -> error("Unsupported declaration type in: ${klass.render()} ${declaration.render()}")
                 }
             }
         }
