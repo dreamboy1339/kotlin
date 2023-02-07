@@ -25613,6 +25613,18 @@ public class IrBlackBoxCodegenTestGenerated extends AbstractIrBlackBoxCodegenTes
             public void testInlineClasInSignatureNullable() throws Exception {
                 runTest("compiler/testData/codegen/box/inlineClasses/javaInterop/inlineClasInSignatureNullable.kt");
             }
+
+            @Test
+            @TestMetadata("inlineClassInSignatureMultipleOverriding.kt")
+            public void testInlineClassInSignatureMultipleOverriding() throws Exception {
+                runTest("compiler/testData/codegen/box/inlineClasses/javaInterop/inlineClassInSignatureMultipleOverriding.kt");
+            }
+
+            @Test
+            @TestMetadata("kt55945.kt")
+            public void testKt55945() throws Exception {
+                runTest("compiler/testData/codegen/box/inlineClasses/javaInterop/kt55945.kt");
+            }
         }
 
         @Nested
@@ -51125,6 +51137,12 @@ public class IrBlackBoxCodegenTestGenerated extends AbstractIrBlackBoxCodegenTes
         @TestMetadata("inlineFunctions.kt")
         public void testInlineFunctions() throws Exception {
             runTest("compiler/testData/codegen/box/valueClasses/inlineFunctions.kt");
+        }
+
+        @Test
+        @TestMetadata("javaInterop.kt")
+        public void testJavaInterop() throws Exception {
+            runTest("compiler/testData/codegen/box/valueClasses/javaInterop.kt");
         }
 
         @Test

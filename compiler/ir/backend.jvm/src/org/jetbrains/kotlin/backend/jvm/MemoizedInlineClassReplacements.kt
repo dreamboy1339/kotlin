@@ -74,7 +74,7 @@ class MemoizedInlineClassReplacements(
                     }
 
                 // Otherwise, mangle functions with mangled parameters, ignoring constructors
-                it is IrSimpleFunction && !it.isFromJava() &&
+                it is IrSimpleFunction && !(it.isFromJava() && it.overridesOnlyMethodsFromJava()) &&
                         (it.hasMangledParameters(includeMFVC = false) || mangleReturnTypes && it.hasMangledReturnType) ->
                     createMethodReplacement(it)
 
