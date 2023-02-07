@@ -1,4 +1,5 @@
 // PrimitiveBackedInlineClassesKt
+// WITH_STDLIB
 
 @JvmName("getUInt") fun geUInt(): UInt = 42U
 @JvmName("getNullableUInt") fun getNullableUInt(): UInt? = null
