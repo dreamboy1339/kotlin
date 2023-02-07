@@ -8,6 +8,7 @@ package org.jetbrains.kotlin.fir.analysis.checkers.context
 import kotlinx.collections.immutable.PersistentSet
 import kotlinx.collections.immutable.persistentSetOf
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
+import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.expressions.FirStatement
@@ -16,6 +17,7 @@ import org.jetbrains.kotlin.fir.resolve.SessionHolder
 import org.jetbrains.kotlin.fir.resolve.calls.ImplicitReceiverValue
 import org.jetbrains.kotlin.fir.resolve.transformers.ReturnTypeCalculator
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.types.AbstractTypeChecker
 
 class MutableCheckerContext private constructor(
     override val implicitReceiverStack: PersistentImplicitReceiverStack,
@@ -23,6 +25,7 @@ class MutableCheckerContext private constructor(
     override val qualifiedAccessOrAssignmentsOrAnnotationCalls: MutableList<FirStatement>,
     override val getClassCalls: MutableList<FirGetClassCall>,
     override val annotationContainers: MutableList<FirAnnotationContainer>,
+    override val containingElements: MutableList<FirElement>,
     override var isContractBody: Boolean,
     sessionHolder: SessionHolder,
     returnTypeCalculator: ReturnTypeCalculator,
@@ -33,6 +36,7 @@ class MutableCheckerContext private constructor(
 ) : AbstractCheckerContext(sessionHolder, returnTypeCalculator, allInfosSuppressed, allWarningsSuppressed, allErrorsSuppressed) {
     constructor(sessionHolder: SessionHolder, returnTypeCalculator: ReturnTypeCalculator) : this(
         PersistentImplicitReceiverStack(),
+        mutableListOf(),
         mutableListOf(),
         mutableListOf(),
         mutableListOf(),
@@ -53,6 +57,7 @@ class MutableCheckerContext private constructor(
             qualifiedAccessOrAssignmentsOrAnnotationCalls,
             getClassCalls,
             annotationContainers,
+            containingElements,
             isContractBody,
             sessionHolder,
             returnTypeCalculator,
@@ -69,7 +74,7 @@ class MutableCheckerContext private constructor(
     }
 
     override fun dropDeclaration() {
-        containingDeclarations.removeAt(containingDeclarations.size - 1)
+        containingDeclarations.removeLast()
     }
 
     override fun addQualifiedAccessOrAnnotationCall(qualifiedAccessOrAnnotationCall: FirStatement): MutableCheckerContext {
@@ -78,7 +83,7 @@ class MutableCheckerContext private constructor(
     }
 
     override fun dropQualifiedAccessOrAnnotationCall() {
-        qualifiedAccessOrAssignmentsOrAnnotationCalls.removeAt(qualifiedAccessOrAssignmentsOrAnnotationCalls.size - 1)
+        qualifiedAccessOrAssignmentsOrAnnotationCalls.removeLast()
     }
 
     override fun addGetClassCall(getClassCall: FirGetClassCall): MutableCheckerContext {
@@ -87,7 +92,7 @@ class MutableCheckerContext private constructor(
     }
 
     override fun dropGetClassCall() {
-        getClassCalls.removeAt(getClassCalls.size - 1)
+        getClassCalls.removeLast()
     }
 
     override fun addAnnotationContainer(annotationContainer: FirAnnotationContainer): CheckerContext {
@@ -96,7 +101,17 @@ class MutableCheckerContext private constructor(
     }
 
     override fun dropAnnotationContainer() {
-        annotationContainers.removeAt(annotationContainers.size - 1)
+        annotationContainers.removeLast()
+    }
+
+    override fun addElement(element: FirElement): CheckerContext {
+        assert(containingElements.lastOrNull() !== element)
+        containingElements.add(element)
+        return this
+    }
+
+    override fun dropElement() {
+        containingElements.removeLast()
     }
 
     override fun addSuppressedDiagnostics(
@@ -112,6 +127,7 @@ class MutableCheckerContext private constructor(
             qualifiedAccessOrAssignmentsOrAnnotationCalls,
             getClassCalls,
             annotationContainers,
+            containingElements,
             isContractBody,
             sessionHolder,
             returnTypeCalculator,

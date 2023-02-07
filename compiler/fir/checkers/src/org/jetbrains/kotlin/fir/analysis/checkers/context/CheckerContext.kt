@@ -34,6 +34,7 @@ abstract class CheckerContext : MutableDiagnosticContext() {
     abstract val qualifiedAccessOrAssignmentsOrAnnotationCalls: List<FirStatement>
     abstract val getClassCalls: List<FirGetClassCall>
     abstract val annotationContainers: List<FirAnnotationContainer>
+    abstract val containingElements: List<FirElement>
     abstract val isContractBody: Boolean
 
     // Suppress
@@ -71,6 +72,10 @@ abstract class CheckerContext : MutableDiagnosticContext() {
     abstract fun addAnnotationContainer(annotationContainer: FirAnnotationContainer): CheckerContext
 
     abstract fun dropAnnotationContainer()
+
+    abstract fun addElement(element: FirElement): CheckerContext
+
+    abstract fun dropElement()
 
     abstract fun enterContractBody(): CheckerContext
 

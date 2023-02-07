@@ -10,6 +10,7 @@ import kotlinx.collections.immutable.PersistentSet
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.persistentSetOf
 import org.jetbrains.kotlin.fir.FirAnnotationContainer
+import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.expressions.FirGetClassCall
 import org.jetbrains.kotlin.fir.expressions.FirStatement
@@ -25,6 +26,7 @@ class PersistentCheckerContext private constructor(
     override val qualifiedAccessOrAssignmentsOrAnnotationCalls: PersistentList<FirStatement>,
     override val getClassCalls: PersistentList<FirGetClassCall>,
     override val annotationContainers: PersistentList<FirAnnotationContainer>,
+    override val containingElements: PersistentList<FirElement>,
     override val isContractBody: Boolean,
     sessionHolder: SessionHolder,
     returnTypeCalculator: ReturnTypeCalculator,
@@ -35,6 +37,7 @@ class PersistentCheckerContext private constructor(
 ) : AbstractCheckerContext(sessionHolder, returnTypeCalculator, allInfosSuppressed, allWarningsSuppressed, allErrorsSuppressed) {
     constructor(sessionHolder: SessionHolder, returnTypeCalculator: ReturnTypeCalculator) : this(
         PersistentImplicitReceiverStack(),
+        persistentListOf(),
         persistentListOf(),
         persistentListOf(),
         persistentListOf(),
@@ -55,6 +58,7 @@ class PersistentCheckerContext private constructor(
             qualifiedAccessOrAssignmentsOrAnnotationCalls,
             getClassCalls,
             annotationContainers,
+            containingElements,
             isContractBody,
             sessionHolder,
             returnTypeCalculator,
@@ -72,6 +76,7 @@ class PersistentCheckerContext private constructor(
             qualifiedAccessOrAssignmentsOrAnnotationCalls,
             getClassCalls,
             annotationContainers,
+            containingElements,
             isContractBody,
             sessionHolder,
             returnTypeCalculator,
@@ -82,8 +87,7 @@ class PersistentCheckerContext private constructor(
         )
     }
 
-    override fun dropDeclaration() {
-    }
+    override fun dropDeclaration() {}
 
     override fun addQualifiedAccessOrAnnotationCall(qualifiedAccessOrAnnotationCall: FirStatement): PersistentCheckerContext {
         return PersistentCheckerContext(
@@ -92,6 +96,7 @@ class PersistentCheckerContext private constructor(
             this.qualifiedAccessOrAssignmentsOrAnnotationCalls.add(qualifiedAccessOrAnnotationCall),
             getClassCalls,
             annotationContainers,
+            containingElements,
             isContractBody,
             sessionHolder,
             returnTypeCalculator,
@@ -102,8 +107,7 @@ class PersistentCheckerContext private constructor(
         )
     }
 
-    override fun dropQualifiedAccessOrAnnotationCall() {
-    }
+    override fun dropQualifiedAccessOrAnnotationCall() {}
 
     override fun addGetClassCall(getClassCall: FirGetClassCall): PersistentCheckerContext {
         return PersistentCheckerContext(
@@ -112,6 +116,7 @@ class PersistentCheckerContext private constructor(
             qualifiedAccessOrAssignmentsOrAnnotationCalls,
             getClassCalls.add(getClassCall),
             annotationContainers,
+            containingElements,
             isContractBody,
             sessionHolder,
             returnTypeCalculator,
@@ -122,8 +127,7 @@ class PersistentCheckerContext private constructor(
         )
     }
 
-    override fun dropGetClassCall() {
-    }
+    override fun dropGetClassCall() {}
 
     override fun addAnnotationContainer(annotationContainer: FirAnnotationContainer): PersistentCheckerContext {
         return PersistentCheckerContext(
@@ -132,6 +136,7 @@ class PersistentCheckerContext private constructor(
             qualifiedAccessOrAssignmentsOrAnnotationCalls,
             getClassCalls,
             annotationContainers.add(annotationContainer),
+            containingElements,
             isContractBody,
             sessionHolder,
             returnTypeCalculator,
@@ -142,8 +147,27 @@ class PersistentCheckerContext private constructor(
         )
     }
 
-    override fun dropAnnotationContainer() {
+    override fun dropAnnotationContainer() {}
+
+    override fun addElement(element: FirElement): CheckerContext {
+        return PersistentCheckerContext(
+            implicitReceiverStack,
+            containingDeclarations,
+            qualifiedAccessOrAssignmentsOrAnnotationCalls,
+            getClassCalls,
+            annotationContainers,
+            containingElements.add(element),
+            isContractBody,
+            sessionHolder,
+            returnTypeCalculator,
+            suppressedDiagnostics,
+            allInfosSuppressed,
+            allWarningsSuppressed,
+            allErrorsSuppressed
+        )
     }
+
+    override fun dropElement() {}
 
     override fun addSuppressedDiagnostics(
         diagnosticNames: Collection<String>,
@@ -158,6 +182,7 @@ class PersistentCheckerContext private constructor(
             qualifiedAccessOrAssignmentsOrAnnotationCalls,
             getClassCalls,
             annotationContainers,
+            containingElements,
             isContractBody,
             sessionHolder,
             returnTypeCalculator,
@@ -177,6 +202,7 @@ class PersistentCheckerContext private constructor(
             qualifiedAccessOrAssignmentsOrAnnotationCalls,
             getClassCalls,
             annotationContainers,
+            containingElements,
             isContractBody = newValue,
             sessionHolder,
             returnTypeCalculator,
