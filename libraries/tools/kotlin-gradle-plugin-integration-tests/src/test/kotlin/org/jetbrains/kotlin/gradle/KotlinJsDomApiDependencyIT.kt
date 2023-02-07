@@ -22,7 +22,6 @@ class KotlinJsDomApiDependencyIT : KGPBaseTest() {
     override val defaultBuildOptions =
         super.defaultBuildOptions.copy(
             jsOptions = defaultJsOptions,
-            warningMode = WarningMode.Summary
         )
 
     @DisplayName("Kotlin/JS DOM API automatically added as dependency")
