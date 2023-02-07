@@ -75,7 +75,7 @@ fun createStdLibVersionedDocTask(version: String, isLatest: Boolean) =
         moduleName.set("kotlin-stdlib")
         val moduleDirName = "kotlin-stdlib"
         with(pluginsMapConfiguration) {
-            put("org.jetbrains.dokka.base.DokkaBase"                      , """{ "mergeImplicitExpectActualDeclarations": "true" }""")
+            put("org.jetbrains.dokka.base.DokkaBase"                      , """{ "mergeImplicitExpectActualDeclarations": "true", "templatesDir": "$templatesDir" }""")
             put("org.jetbrains.dokka.kotlinlang.StdLibConfigurationPlugin", """{ "ignoreCommonBuiltIns": "true" }""")
             put("org.jetbrains.dokka.versioning.VersioningPlugin"         , """{ "version": "$version" }" }""")
         }
@@ -281,14 +281,15 @@ fun createKotlinTestVersionedDocTask(version: String, isLatest: Boolean) =
         moduleName.set("kotlin-test")
 
         val moduleDirName = "kotlin-test"
-        pluginsMapConfiguration
-            .put("org.jetbrains.dokka.versioning.VersioningPlugin"         , """{ "version": "$version" }""")
+        with(pluginsMapConfiguration) {
+            put("org.jetbrains.dokka.base.DokkaBase", """{ "templatesDir": "$templatesDir" }""")
+            put("org.jetbrains.dokka.versioning.VersioningPlugin", """{ "version": "$version" }""")
+        }
         if (isLatest) {
             outputDirectory.set(file("$outputDirPartial/latest").resolve(moduleDirName))
         } else {
             outputDirectory.set(file("$outputDirPartial/previous").resolve(moduleDirName).resolve(version))
-            pluginsMapConfiguration
-                .put("org.jetbrains.dokka.kotlinlang.VersionFilterPlugin"      , """{ "targetVersion": "$version" }""")
+            pluginsMapConfiguration.put("org.jetbrains.dokka.kotlinlang.VersionFilterPlugin", """{ "targetVersion": "$version" }""")
         }
 
         dokkaSourceSets {
@@ -421,18 +422,13 @@ fun createAllLibsVersionedDocTask(version: String, isLatest: Boolean, vararg lib
         val moduleDirName = "all-libs"
         val outputDirLatest = file("$outputDir/latest")
         val outputDirPrevious = file("$outputDir/previous")
+        pluginsMapConfiguration.put("org.jetbrains.dokka.base.DokkaBase", """{ "templatesDir": "$templatesDir" }""")
         if (isLatest) {
             outputDirectory.set(outputDirLatest.resolve(moduleDirName))
-            with(pluginsMapConfiguration) {
-                put("org.jetbrains.dokka.base.DokkaBase"                      , """{ "templatesDir": "$templatesDir" }""")
-                put("org.jetbrains.dokka.versioning.VersioningPlugin"         , """{ "version": "$version", "olderVersionsDir": "${inputDirPrevious.resolve(moduleDirName).invariantSeparatorsPath}" }""")
-            }
+            pluginsMapConfiguration.put("org.jetbrains.dokka.versioning.VersioningPlugin", """{ "version": "$version", "olderVersionsDir": "${inputDirPrevious.resolve(moduleDirName).invariantSeparatorsPath}" }""")
         } else {
             outputDirectory.set(outputDirPrevious.resolve(moduleDirName).resolve(version))
-            with(pluginsMapConfiguration) {
-                put("org.jetbrains.dokka.base.DokkaBase"                      , """{ "templatesDir": "$templatesDir" }""")
-                put("org.jetbrains.dokka.versioning.VersioningPlugin"         , """{ "version": "$version" }""")
-            }
+            pluginsMapConfiguration.put("org.jetbrains.dokka.versioning.VersioningPlugin", """{ "version": "$version" }""")
         }
     }
 
