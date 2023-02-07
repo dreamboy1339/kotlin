@@ -178,7 +178,7 @@ public class DescriptorFactory {
         ClassDescriptor enumEntriesClass = FindClassInModuleKt.findClassAcrossModuleDependencies(getContainingModule(enumClass),
                                                                                                  StandardClassIds.INSTANCE.getEnumEntries());
         if (enumEntriesClass == null) {
-            return null;
+            throw new IllegalStateException("kotlin.enums.EnumEntries is not available. Is non-full kotlin stdlib being used?");
         }
         PropertyDescriptorImpl entries =
                 PropertyDescriptorImpl.create(enumClass, Annotations.Companion.getEMPTY(), Modality.FINAL, DescriptorVisibilities.PUBLIC,
