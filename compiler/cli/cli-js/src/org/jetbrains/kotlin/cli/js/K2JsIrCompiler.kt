@@ -73,7 +73,7 @@ import org.jetbrains.kotlin.ir.backend.js.ic.CacheUpdater
 import org.jetbrains.kotlin.ir.backend.js.ic.DirtyFileState
 import org.jetbrains.kotlin.ir.backend.js.ic.JsExecutableProducer
 import org.jetbrains.kotlin.ir.backend.js.ic.ModuleArtifact
-import org.jetbrains.kotlin.ir.backend.web.lower.serialization.ir.JsManglerIr
+import org.jetbrains.kotlin.ir.backend.web.lower.serialization.ir.WebManglerIr
 import org.jetbrains.kotlin.ir.backend.js.transformers.irToJs.CompilationOutputsBuilt
 import org.jetbrains.kotlin.ir.backend.js.transformers.irToJs.IrModuleToJsTransformer
 import org.jetbrains.kotlin.ir.backend.js.transformers.irToJs.JsCodeGenerator
@@ -296,7 +296,7 @@ class K2JsIrCompiler : CLICompiler<K2JSCompilerArguments>() {
             } else {
                 sourceModule = processSourceModule(environmentForJS, libraries, friendLibraries, arguments, outputKlibPath)
 
-                if (!sourceModule.jsFrontEndResult.analysisResult.shouldGenerateCode)
+                if (!sourceModule.webFrontEndResult.analysisResult.shouldGenerateCode)
                     return OK
             }
 
@@ -432,13 +432,13 @@ class K2JsIrCompiler : CLICompiler<K2JSCompilerArguments>() {
                 friendLibraries,
                 AnalyzerWithCompilerReport(environmentForJS.configuration)
             )
-            val result = sourceModule.jsFrontEndResult.analysisResult
+            val result = sourceModule.webFrontEndResult.analysisResult
             if (result is WebAnalysisResult.RetryWithAdditionalRoots) {
                 environmentForJS.addKotlinSourceRoots(result.additionalKotlinRoots)
             }
         } while (result is WebAnalysisResult.RetryWithAdditionalRoots)
 
-        if (sourceModule.jsFrontEndResult.analysisResult.shouldGenerateCode && (arguments.irProduceKlibDir || arguments.irProduceKlibFile)) {
+        if (sourceModule.webFrontEndResult.analysisResult.shouldGenerateCode && (arguments.irProduceKlibDir || arguments.irProduceKlibFile)) {
             val moduleSourceFiles = (sourceModule.mainModule as MainModule.SourceFiles).files
             val icData = environmentForJS.configuration.incrementalDataProvider?.getSerializedData(moduleSourceFiles) ?: emptyList()
             val expectDescriptorToSymbol = mutableMapOf<DeclarationDescriptor, IrSymbol>()
@@ -447,7 +447,7 @@ class K2JsIrCompiler : CLICompiler<K2JSCompilerArguments>() {
                 environmentForJS.project,
                 moduleSourceFiles,
                 environmentForJS.configuration,
-                sourceModule.jsFrontEndResult.analysisResult,
+                sourceModule.webFrontEndResult.analysisResult,
                 sourceModule.allDependencies,
                 icData,
                 expectDescriptorToSymbol,
@@ -458,7 +458,7 @@ class K2JsIrCompiler : CLICompiler<K2JSCompilerArguments>() {
             }
 
             val metadataSerializer =
-                KlibMetadataIncrementalSerializer(environmentForJS.configuration, sourceModule.project, sourceModule.jsFrontEndResult.hasErrors)
+                KlibMetadataIncrementalSerializer(environmentForJS.configuration, sourceModule.project, sourceModule.webFrontEndResult.hasErrors)
 
             generateKLib(
                 sourceModule,
@@ -469,7 +469,7 @@ class K2JsIrCompiler : CLICompiler<K2JSCompilerArguments>() {
                 expectDescriptorToSymbol = expectDescriptorToSymbol,
                 moduleFragment = moduleFragment
             ) { file ->
-                metadataSerializer.serializeScope(file, sourceModule.jsFrontEndResult.bindingContext, moduleFragment.descriptor)
+                metadataSerializer.serializeScope(file, sourceModule.webFrontEndResult.bindingContext, moduleFragment.descriptor)
             }
         }
         return sourceModule
@@ -514,7 +514,7 @@ class K2JsIrCompiler : CLICompiler<K2JSCompilerArguments>() {
         }
 
         val logger = configuration.resolverLogger
-        val resolvedLibraries = jsResolveLibraries(libraries + friendLibraries, logger).getFullResolvedList()
+        val resolvedLibraries = webResolveLibraries(libraries + friendLibraries, logger).getFullResolvedList()
 
         FirJsSessionFactory.createJsLibrarySession(
             mainModuleName,
@@ -567,7 +567,7 @@ class K2JsIrCompiler : CLICompiler<K2JSCompilerArguments>() {
         val librariesDescriptors = resolvedLibraries.map { resolvedLibrary ->
             val storageManager = LockBasedStorageManager("ModulesStructure")
 
-            val moduleDescriptor = JsFactories.DefaultDeserializedDescriptorFactory.createDescriptorOptionalBuiltIns(
+            val moduleDescriptor = WebFactories.DefaultDeserializedDescriptorFactory.createDescriptorOptionalBuiltIns(
                 resolvedLibrary.library,
                 configuration.languageVersionSettings,
                 storageManager,
@@ -594,7 +594,7 @@ class K2JsIrCompiler : CLICompiler<K2JSCompilerArguments>() {
             session, scopeSession, firFiles + commonFirFiles,
             configuration.languageVersionSettings,
             fir2IrExtensions,
-            JsManglerIr, IrFactoryImpl,
+            WebManglerIr, IrFactoryImpl,
             Fir2IrVisibilityConverter.Default,
             Fir2IrJvmSpecialAnnotationSymbolProvider(), // TODO: replace with appropriate (probably empty) implementation
             IrGenerationExtension.getInstances(environmentForJS.project),
