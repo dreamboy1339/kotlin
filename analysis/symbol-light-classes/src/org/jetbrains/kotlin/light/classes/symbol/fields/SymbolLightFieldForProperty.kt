@@ -108,9 +108,7 @@ internal class SymbolLightFieldForProperty private constructor(
                 if (propertySymbol.isVal || propertySymbol.isDelegatedProperty) {
                     PsiModifier.FINAL
                 } else {
-                    propertySymbol.computeSimpleModality()?.takeIf {
-                        it != PsiModifier.FINAL || isTopLevel && propertySymbol.isDelegatedProperty
-                    }
+                    propertySymbol.computeSimpleModality()?.takeIf { it != PsiModifier.FINAL }
                 }
             }
 
