@@ -77,12 +77,12 @@ private class Degrade(val rootProject: Project) {
 
         if (commands.isEmpty()) return null
 
-        val kotlinNativeDist = project.properties["kotlinNativeDist"]
+        val konanHome = project.properties["konanHome"] ?: project.properties["kotlinNativeDist"]
 
         val scriptName = task.path.substring(1).replace(':', '_') + ".sh"
 
         generateScript(scriptName) {
-            appendLine("""kotlinNativeDist="$kotlinNativeDist"""")
+            appendLine("""kotlinNativeDist="$konanHome"""")
             appendLine()
             commands.forEach { command ->
                 appendLine(""""${"$"}kotlinNativeDist/bin/run_konan" \""")
