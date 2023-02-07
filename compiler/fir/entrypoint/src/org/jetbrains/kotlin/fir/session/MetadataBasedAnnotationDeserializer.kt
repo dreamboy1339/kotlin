@@ -6,22 +6,7 @@
 package org.jetbrains.kotlin.fir.session
 
 import org.jetbrains.kotlin.fir.FirSession
-import org.jetbrains.kotlin.fir.deserialization.AbstractAnnotationDeserializer
-import org.jetbrains.kotlin.fir.expressions.FirAnnotation
-import org.jetbrains.kotlin.metadata.ProtoBuf
-import org.jetbrains.kotlin.metadata.deserialization.NameResolver
 import org.jetbrains.kotlin.serialization.deserialization.builtins.BuiltInSerializerProtocol
 
-class MetadataBasedAnnotationDeserializer(
-    session: FirSession
-) : AbstractAnnotationDeserializer(session, BuiltInSerializerProtocol) {
-    override fun loadTypeAnnotations(typeProto: ProtoBuf.Type, nameResolver: NameResolver): List<FirAnnotation> {
-        val annotations = typeProto.getExtension(protocol.typeAnnotation).orEmpty()
-        return annotations.map { deserializeAnnotation(it, nameResolver) }
-    }
-
-    override fun loadTypeParameterAnnotations(typeParameterProto: ProtoBuf.TypeParameter, nameResolver: NameResolver): List<FirAnnotation> {
-        val annotations = typeParameterProto.getExtension(protocol.typeParameterAnnotation).orEmpty()
-        return annotations.map { deserializeAnnotation(it, nameResolver) }
-    }
-}
+class MetadataBasedAnnotationDeserializer(session: FirSession) :
+    AbstractAnnotationDeserializerWithTypeAnnotations(session, BuiltInSerializerProtocol)
