@@ -21,7 +21,6 @@ import org.jetbrains.kotlin.fir.resolve.inference.model.ConeArgumentConstraintPo
 import org.jetbrains.kotlin.fir.resolve.inference.model.ConeReceiverConstraintPosition
 import org.jetbrains.kotlin.fir.resolve.inference.preprocessCallableReference
 import org.jetbrains.kotlin.fir.resolve.inference.preprocessLambdaArgument
-import org.jetbrains.kotlin.fir.resolve.transformers.ReturnTypeCalculator
 import org.jetbrains.kotlin.fir.resolve.transformers.body.resolve.resultType
 import org.jetbrains.kotlin.fir.resolve.transformers.ensureResolvedTypeDeclaration
 import org.jetbrains.kotlin.fir.returnExpressions
@@ -444,7 +443,7 @@ internal fun Candidate.resolveArgument(
 ) {
     argument.resultType.ensureResolvedTypeDeclaration(context.session)
     val expectedType =
-        prepareExpectedType(context.session, context.bodyResolveComponents.scopeSession, callInfo, argument, parameter, context)
+        prepareExpectedType(context.session, callInfo, argument, parameter, context)
     resolveArgumentExpression(
         this.system.getBuilder(),
         argument,
@@ -459,7 +458,6 @@ internal fun Candidate.resolveArgument(
 
 private fun Candidate.prepareExpectedType(
     session: FirSession,
-    scopeSession: ScopeSession,
     callInfo: CallInfo,
     argument: FirExpression,
     parameter: FirValueParameter?,
@@ -469,7 +467,7 @@ private fun Candidate.prepareExpectedType(
     val basicExpectedType = argument.getExpectedType(parameter/*, LanguageVersionSettings*/)
 
     val expectedType =
-        getExpectedTypeWithSAMConversion(session, scopeSession, argument, basicExpectedType, context)?.also {
+        getExpectedTypeWithSAMConversion(session, argument, basicExpectedType, context)?.also {
             session.lookupTracker?.let { lookupTracker ->
                 parameter.returnTypeRef.coneType.lowerBoundIfFlexible().classId?.takeIf { !it.isLocal }?.let { classId ->
                     lookupTracker.recordLookup(
@@ -492,7 +490,6 @@ private fun Candidate.prepareExpectedType(
 
 private fun Candidate.getExpectedTypeWithSAMConversion(
     session: FirSession,
-    scopeSession: ScopeSession,
     argument: FirExpression,
     candidateExpectedType: ConeKotlinType,
     context: ResolutionContext
@@ -503,7 +500,7 @@ private fun Candidate.getExpectedTypeWithSAMConversion(
 
     val expectedFunctionType = context.bodyResolveComponents.samResolver.getFunctionTypeForPossibleSamType(candidateExpectedType)
         ?: return null
-    return runIf(argument.isFunctional(session, scopeSession, expectedFunctionType, context.returnTypeCalculator)) {
+    return runIf(argument.isFunctional(session, expectedFunctionType)) {
         usesSAM = true
         expectedFunctionType
     }
@@ -511,9 +508,7 @@ private fun Candidate.getExpectedTypeWithSAMConversion(
 
 fun FirExpression.isFunctional(
     session: FirSession,
-    scopeSession: ScopeSession,
     expectedFunctionType: ConeKotlinType?,
-    returnTypeCalculator: ReturnTypeCalculator,
 ): Boolean {
     when (unwrapArgument()) {
         is FirAnonymousFunctionExpression, is FirCallableReferenceAccess -> return true
@@ -527,54 +522,14 @@ fun FirExpression.isFunctional(
             if (classLikeExpectedFunctionType == null || coneType is ConeIntegerLiteralType) {
                 return false
             }
-
-            val namedReferenceWithCandidate = namedReferenceWithCandidate()
-            if (namedReferenceWithCandidate?.candidate?.postponedAtoms?.any {
-                    it is LambdaWithTypeVariableAsExpectedTypeAtom &&
-                            it.expectedType.typeConstructor(session.typeContext) == coneType.typeConstructor(session.typeContext)
-                } == true
-            ) {
+            if (AbstractTypeChecker.isSubtypeOf(session.typeContext, coneType, classLikeExpectedFunctionType)) {
                 return true
             }
 
-            val invokeSymbol =
-                coneType.findContributedInvokeSymbol(
-                    session, scopeSession, classLikeExpectedFunctionType, shouldCalculateReturnTypesOfFakeOverrides = false
-                ) ?: return false
-            // Make sure the contributed `invoke` is indeed a wanted functional type by checking if types are compatible.
-            val expectedReturnType = classLikeExpectedFunctionType.returnType(session).lowerBoundIfFlexible()
-            val returnTypeCompatible =
-                expectedReturnType.originalIfDefinitelyNotNullable() is ConeTypeParameterType ||
-                        AbstractTypeChecker.isSubtypeOf(
-                            session.typeContext.newTypeCheckerState(
-                                errorTypesEqualToAnything = false,
-                                stubTypesEqualToAnything = true
-                            ),
-                            returnTypeCalculator.tryCalculateReturnType(invokeSymbol.fir).type,
-                            expectedReturnType,
-                            isFromNullabilityConstraint = false
-                        )
-            if (!returnTypeCompatible) {
-                return false
-            }
-            if (invokeSymbol.fir.valueParameters.size != classLikeExpectedFunctionType.typeArguments.size - 1) {
-                return false
-            }
-            val parameterPairs =
-                invokeSymbol.fir.valueParameters.zip(classLikeExpectedFunctionType.valueParameterTypesIncludingReceiver(session))
-            return parameterPairs.all { (invokeParameter, expectedParameter) ->
-                val expectedParameterType = expectedParameter.lowerBoundIfFlexible()
-                expectedParameterType.originalIfDefinitelyNotNullable() is ConeTypeParameterType ||
-                        AbstractTypeChecker.isSubtypeOf(
-                            session.typeContext.newTypeCheckerState(
-                                errorTypesEqualToAnything = false,
-                                stubTypesEqualToAnything = true
-                            ),
-                            invokeParameter.returnTypeRef.coneType,
-                            expectedParameterType,
-                            isFromNullabilityConstraint = false
-                        )
-            }
+            return namedReferenceWithCandidate()?.candidate?.postponedAtoms?.any {
+                it is LambdaWithTypeVariableAsExpectedTypeAtom &&
+                        it.expectedType.typeConstructor(session.typeContext) == coneType.typeConstructor(session.typeContext)
+            } == true
         }
     }
 }
