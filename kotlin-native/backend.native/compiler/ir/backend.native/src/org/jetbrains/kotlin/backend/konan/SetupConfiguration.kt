@@ -14,9 +14,9 @@ import org.jetbrains.kotlin.konan.file.File
 import org.jetbrains.kotlin.konan.target.CompilerOutputKind
 
 fun CompilerConfiguration.setupFromArguments(arguments: K2NativeCompilerArguments) = with(KonanConfigKeys) {
-    val commonSources = arguments.commonSources?.toSet().orEmpty().map { File(it).canonicalPath }
+    val commonSources = arguments.commonSources?.toSet().orEmpty().map { java.io.File(it).absoluteFile.normalize() }
     arguments.freeArgs.forEach {
-        addKotlinSourceRoot(it, File(it).canonicalPath in commonSources)
+        addKotlinSourceRoot(it, java.io.File(it).absoluteFile.normalize() in commonSources)
     }
 
     // Can be overwritten by explicit arguments below.
