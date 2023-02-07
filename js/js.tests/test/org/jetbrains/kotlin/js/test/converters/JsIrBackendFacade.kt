@@ -78,8 +78,8 @@ class JsIrBackendFacade(
 
         val granularity = when {
             !firstTimeCompilation -> JsGenerationGranularity.WHOLE_PROGRAM
+            splitPerFile || module.kind == ModuleKind.ES -> JsGenerationGranularity.PER_FILE
             splitPerModule || perModule -> JsGenerationGranularity.PER_MODULE
-            splitPerFile -> JsGenerationGranularity.PER_FILE
             else -> JsGenerationGranularity.WHOLE_PROGRAM
         }
 

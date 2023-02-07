@@ -9821,6 +9821,12 @@ public class IrBoxJsTestGenerated extends AbstractIrBoxJsTest {
         }
 
         @Test
+        @TestMetadata("findAssociatedObjectInSeparatedFile.kt")
+        public void testFindAssociatedObjectInSeparatedFile() throws Exception {
+            runTest("js/js.translator/testData/box/reflection/findAssociatedObjectInSeparatedFile.kt");
+        }
+
+        @Test
         @TestMetadata("findAssociatedObject_oldBE.kt")
         public void testFindAssociatedObject_oldBE() throws Exception {
             runTest("js/js.translator/testData/box/reflection/findAssociatedObject_oldBE.kt");
