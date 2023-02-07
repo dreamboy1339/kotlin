@@ -152,23 +152,22 @@ private class JsIrModuleCrossModuleReferenceBuilder(
     }
 
     fun buildCrossModuleRefs(): CrossModuleReferences {
+        val isImportOptional = moduleKind == ModuleKind.ES
         val importedModules = mutableMapOf<JsIrModuleHeader, JsImportedModule>()
 
-        fun import(moduleHeader: JsIrModuleHeader, isImportOptional: Boolean = false): JsName {
-            return if (isImportOptional) {
-                JsName(moduleHeader.moduleName, false)
-            } else {
-                importedModules.getOrPut(moduleHeader) {
-                    val jsModuleName = JsName(moduleHeader.moduleName, false)
-                    val relativeRequirePath = relativeRequirePath(moduleHeader)
+        fun import(moduleHeader: JsIrModuleHeader): JsImportedModule {
+            val jsModuleName = JsName(moduleHeader.moduleName, false)
+            val relativeRequirePath = relativeRequirePath(moduleHeader)
 
-                    JsImportedModule(
-                        moduleHeader.externalModuleName,
-                        jsModuleName,
-                        null,
-                        relativeRequirePath
-                    )
-                }.internalName
+            val importedModule = JsImportedModule(
+                moduleHeader.externalModuleName,
+                jsModuleName,
+                null,
+                relativeRequirePath
+            )
+
+            return importedModule.also {
+                if (!isImportOptional) importedModules.getOrPut(moduleHeader) { importedModule }
             }
         }
 
@@ -183,7 +182,7 @@ private class JsIrModuleCrossModuleReferenceBuilder(
         val transitiveExport = transitiveJsExportFrom.mapNotNull {
             it.reexportedInModuleWithName?.run {
                 CrossModuleTransitiveExport(
-                    import(it, isImportOptional = moduleKind == ModuleKind.ES),
+                    import(it).internalName,
                     relativeRequirePath(it) ?: it.externalModuleName
                 )
             }
@@ -200,9 +199,7 @@ private class JsIrModuleCrossModuleReferenceBuilder(
     private fun relativeRequirePath(moduleHeader: JsIrModuleHeader): String? {
         if (!this.relativeRequirePath) return null
 
-        val parentMain = File(header.externalModuleName).parentFile
-
-        if (parentMain == null) return "./${moduleHeader.externalModuleName}"
+        val parentMain = File(header.externalModuleName).parentFile ?: return "./${moduleHeader.externalModuleName}"
 
         val relativePath = File(moduleHeader.externalModuleName)
             .toRelativeString(parentMain)
@@ -213,7 +210,7 @@ private class JsIrModuleCrossModuleReferenceBuilder(
     }
 }
 
-class CrossModuleImport(val exportedAs: String, val moduleExporter: JsName)
+class CrossModuleImport(val exportedAs: String, val moduleExporter: JsImportedModule)
 
 class CrossModuleTransitiveExport(val internalName: JsName, val externalName: String)
 
@@ -227,28 +224,45 @@ class CrossModuleReferences(
     val imports: Map<String, CrossModuleImport>, // tag -> import statement
 ) {
     // built from imports
-    var jsImports = emptyMap<String, JsVars.JsVar>() // tag -> import statement
+    var jsImports = emptyMap<String, JsStatement>() // tag -> import statement
         private set
 
     fun initJsImportsForModule(module: JsIrModule) {
         val tagToName = module.fragments.flatMap { it.nameBindings.entries }.associate { it.key to it.value }
         jsImports = imports.entries.associate {
             val importedAs = tagToName[it.key] ?: error("Internal error: cannot find imported name for signature ${it.key}")
-            val exportRef = JsNameRef(
-                it.value.exportedAs,
-                it.value.moduleExporter.let {
-                    if (moduleKind == ModuleKind.ES) {
-                        it.makeRef()
-                    } else {
-                        ReservedJsNames.makeCrossModuleNameRef(it)
-                    }
-                }
-            )
-            it.key to JsVars.JsVar(importedAs, exportRef)
+            it.key to it.value.generateCrossModuleImportStatement(importedAs)
         }
+    }
+
+    private fun CrossModuleImport.generateCrossModuleImportStatement(importedAs: JsName): JsStatement {
+        return when (moduleKind) {
+            ModuleKind.ES -> generateJsImportStatement(importedAs)
+            else -> generateImportVariableDeclaration(importedAs)
+        }
+    }
+
+    private fun CrossModuleImport.generateImportVariableDeclaration(importedAs: JsName): JsStatement {
+        val exportRef = JsNameRef(exportedAs, ReservedJsNames.makeCrossModuleNameRef(moduleExporter.internalName))
+        return JsVars(JsVars.JsVar(importedAs, exportRef))
+    }
+
+    private fun CrossModuleImport.generateJsImportStatement(importedAs: JsName): JsStatement {
+        return JsImport(
+            moduleExporter.getRequireName(true),
+            JsImport.Element(JsName(exportedAs, false), importedAs.makeRef())
+        )
     }
 
     companion object {
         fun Empty(moduleKind: ModuleKind) = CrossModuleReferences(moduleKind, listOf(), emptyList(), emptyMap(), emptyMap())
+    }
+}
+
+fun JsStatement.renameImportedSymbolInternalName(newName: JsName): JsStatement {
+    return when (this) {
+        is JsImport -> JsImport(module, JsImport.Element((target as JsImport.Target.Elements).elements.single().name, newName.makeRef()))
+        is JsVars -> JsVars(JsVars.JsVar(newName, vars.single().initExpression))
+        else -> error("Unexpected cross-module import statement ${this::class.qualifiedName}")
     }
 }

@@ -8,6 +8,8 @@ package org.jetbrains.kotlin.ir.backend.js.transformers.irToJs
 import org.jetbrains.kotlin.js.backend.ast.*
 import org.jetbrains.kotlin.js.common.isValidES5Identifier
 import org.jetbrains.kotlin.serialization.js.ModuleKind
+import org.jetbrains.kotlin.utils.addToStdlib.partitionIsInstance
+import org.jetbrains.kotlin.utils.addToStdlib.runIf
 
 object ModuleWrapperTranslation {
     object Namer {
@@ -131,17 +133,23 @@ object ModuleWrapperTranslation {
     }
 
     private fun wrapEsModule(function: JsFunction, importedModules: List<JsImportedModule>): List<JsStatement> {
+        val (alreadyPresentedImportStatements, restStatements) = function.body.statements.partitionIsInstance<JsStatement, JsImport>()
         val importStatements = importedModules.zip(function.parameters.drop(1)).map {
             JsImport(
                 it.first.getRequireName(isEsm = true),
                 if (it.first.plainReference == null) {
-                    JsImport.Target.All(alias = it.second.name)
+                    JsImport.Target.All(alias = it.second.name.makeRef())
                 } else {
-                    JsImport.Target.Default(name = it.second.name)
+                    JsImport.Target.Default(name = it.second.name.makeRef())
                 }
             )
         }
-       return importStatements + function.body.statements.dropLast(1)
+        val alreadyPresentedImportStatementsWithoutDuplicates = alreadyPresentedImportStatements
+            .groupBy { it.module }
+            .map { (module, import) ->
+                JsImport(module, *import.flatMap { it.elements }.toTypedArray())
+            }
+        return importStatements + alreadyPresentedImportStatementsWithoutDuplicates + restStatements.dropLast(1)
     }
 
 

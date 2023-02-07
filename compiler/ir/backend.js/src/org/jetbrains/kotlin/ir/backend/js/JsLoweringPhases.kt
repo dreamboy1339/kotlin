@@ -893,7 +893,7 @@ val loweringList = listOf<Lowering>(
     addContinuationToNonLocalSuspendFunctionsLoweringPhase,
     addContinuationToLocalSuspendFunctionsLoweringPhase,
     addContinuationToFunctionCallsLoweringPhase,
-//    moveAllClassesToSeparatePlaceLowering,
+    moveAllClassesToSeparatePlaceLowering,
     enumWhenPhase,
     enumEntryInstancesLoweringPhase,
     enumEntryInstancesBodyLoweringPhase,

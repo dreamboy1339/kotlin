@@ -12,20 +12,22 @@ class JsImport(
     val elements: MutableList<Element>
         get() = (target as Target.Elements).elements
 
+    constructor(module: String, vararg elements: Element) : this(module, Target.Elements(elements.toMutableList()))
+
     sealed class Target {
         class Elements(val elements: MutableList<Element>) : Target()
-        class Default(val name: JsName) : Target() {
-            constructor(name: String) : this(JsName(name, false))
+        class Default(val name: JsNameRef) : Target() {
+            constructor(name: String) : this(JsNameRef(name))
         }
 
-        class All(val alias: JsName) : Target() {
-            constructor(alias: String) : this(JsName(alias, false))
+        class All(val alias: JsNameRef) : Target() {
+            constructor(alias: String) : this(JsNameRef(alias))
         }
     }
 
     class Element(
-        val name: JsNameRef,
-        val alias: JsName?
+        val name: JsName,
+        val alias: JsNameRef?
     )
 
     override fun accept(visitor: JsVisitor) {
@@ -33,9 +35,11 @@ class JsImport(
     }
 
     override fun acceptChildren(visitor: JsVisitor) {
-        if (target is Target.Elements) {
-            target.elements.forEach {
-                visitor.accept(it.name)
+        when (target) {
+            is Target.All -> visitor.accept(target.alias)
+            is Target.Default -> visitor.accept(target.name)
+            is Target.Elements -> target.elements.forEach {
+                it.alias?.let(visitor::accept)
             }
         }
     }

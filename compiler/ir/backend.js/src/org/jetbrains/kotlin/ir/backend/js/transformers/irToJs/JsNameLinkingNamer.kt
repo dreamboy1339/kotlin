@@ -16,8 +16,11 @@ import org.jetbrains.kotlin.js.backend.ast.*
 import org.jetbrains.kotlin.utils.DFS
 import org.jetbrains.kotlin.utils.addToStdlib.safeAs
 
-class JsNameLinkingNamer(private val context: JsIrBackendContext, private val minimizedMemberNames: Boolean) : IrNamerBase() {
-
+class JsNameLinkingNamer(
+    private val context: JsIrBackendContext,
+    private val minimizedMemberNames: Boolean,
+    private val isEs6Module: Boolean
+) : IrNamerBase() {
     val nameMap = mutableMapOf<IrDeclaration, JsName>()
 
     private fun IrDeclarationWithName.getName(prefix: String = ""): JsName {

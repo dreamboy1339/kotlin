@@ -297,7 +297,7 @@ class IrModuleToJsTransformer(
     private val pathPrefixMap = backendContext.configuration.getMap(JSConfigurationKeys.FILE_PATHS_PREFIX_MAP)
 
     private fun generateProgramFragment(fileExports: IrFileExports, minimizedMemberNames: Boolean): JsIrProgramFragment {
-        val nameGenerator = JsNameLinkingNamer(backendContext, minimizedMemberNames)
+        val nameGenerator = JsNameLinkingNamer(backendContext, minimizedMemberNames, isEsModules)
 
         val globalNameScope = NameTable<IrDeclaration>()
 
