@@ -521,7 +521,6 @@ private fun PhaseEngine<NativeGenerationState>.getAllLowerings() = listOfNotNull
         functionReferencePhase,
         singleAbstractMethodPhase,
         enumWhenPhase,
-        builtinOperatorPhase,
         finallyBlocksPhase,
         enumClassPhase,
         enumUsagePhase,
@@ -537,6 +536,7 @@ private fun PhaseEngine<NativeGenerationState>.getAllLowerings() = listOfNotNull
         bridgesPhase,
         exportInternalAbiPhase.takeIf { context.config.produce.isCache },
         useInternalAbiPhase,
+        builtinOperatorPhase,
         autoboxPhase,
 )
 
