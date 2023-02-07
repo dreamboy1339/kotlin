@@ -141,6 +141,7 @@ internal class GranularMetadataTransformation(
                 params.resolvedMetadataConfiguration
                     .root
                     .dependencies
+                    .filter { !it.isConstraint}
                     .filterIsInstance<ResolvedDependencyResult>()
             )
         }
@@ -175,7 +176,9 @@ internal class GranularMetadataTransformation(
             }
 
             resolvedDependencyQueue.addAll(
-                transitiveDependenciesToVisit.filter { it.selected.id !in visitedDependencies }
+                transitiveDependenciesToVisit
+                    .filter { it.selected.id !in visitedDependencies }
+                    .filter { !it.isConstraint }
             )
         }
 
