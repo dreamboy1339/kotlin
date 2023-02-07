@@ -44,7 +44,7 @@ public class KtPropertyElementType extends KtStubElementType<KotlinPropertyStub,
                               psi.getText(), psi.getParent() != null ? psi.getParent().getText() : "<no parent>");
 
         return new KotlinPropertyStubImpl(
-                (StubElement<?>) parentStub, StringRef.fromString(psi.getRawName()),
+                (StubElement<?>) parentStub, StringRef.fromString(psi.getName()),
                 psi.isVar(), psi.isTopLevel(), psi.hasDelegate(),
                 psi.hasDelegateExpression(), psi.hasInitializer(),
                 psi.getReceiverTypeReference() != null, psi.getTypeReference() != null,

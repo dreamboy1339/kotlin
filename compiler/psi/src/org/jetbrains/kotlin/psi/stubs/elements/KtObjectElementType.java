@@ -43,7 +43,7 @@ public class KtObjectElementType extends KtStubElementType<KotlinObjectStub, KtO
     @NotNull
     @Override
     public KotlinObjectStub createStub(@NotNull KtObjectDeclaration psi, StubElement parentStub) {
-        String name = psi.getRawName();
+        String name = psi.getName();
         FqName fqName = KtPsiUtilKt.safeFqNameForLazyResolve(psi);
         List<String> superNames = KtPsiUtilKt.getSuperNames(psi);
         return new KotlinObjectStubImpl(

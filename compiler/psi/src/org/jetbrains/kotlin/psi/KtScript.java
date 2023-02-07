@@ -50,11 +50,6 @@ public class KtScript extends KtNamedDeclarationStub<KotlinScriptStub> implement
 
     @Override
     public String getName() {
-        return getRawName();
-    }
-
-    @Override
-    public String getRawName() {
         return getFqName().shortName().asString();
     }
 

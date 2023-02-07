@@ -63,7 +63,7 @@ public class KtClassElementType extends KtStubElementType<KotlinClassStub, KtCla
         return new KotlinClassStubImpl(
                 getStubType(isEnumEntry), (StubElement<?>) parentStub,
                 StringRef.fromString(fqName != null ? fqName.asString() : null), psi.getClassId(),
-                StringRef.fromString(psi.getRawName()),
+                StringRef.fromString(psi.getName()),
                 Utils.INSTANCE.wrapStrings(superNames),
                 psi.isInterface(), isEnumEntry, psi.isLocal(), psi.isTopLevel()
         );
