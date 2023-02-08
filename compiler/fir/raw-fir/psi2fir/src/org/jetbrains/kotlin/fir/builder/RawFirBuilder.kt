@@ -578,11 +578,7 @@ open class RawFirBuilder(
             valueParameterDeclaration: ValueParameterDeclaration,
             additionalAnnotations: List<FirAnnotation>,
         ): FirValueParameter {
-            val name = if (valueParameterDeclaration == ValueParameterDeclaration.LAMBDA) {
-                convertValueParameterName(nameAsSafeName, nameIdentifier?.node?.text, valueParameterDeclaration)
-            } else {
-                nameAsSafeName
-            }
+            val name = convertValueParameterName(nameAsSafeName, valueParameterDeclaration) { nameIdentifier?.node?.text }
             return buildValueParameter {
                 source = toFirSourceElement()
                 moduleData = baseModuleData
@@ -2108,9 +2104,8 @@ open class RawFirBuilder(
                     val parameter = clause.catchParameter?.let { ktParameter ->
                         val name = convertValueParameterName(
                             ktParameter.nameAsSafeName,
-                            ktParameter.nameIdentifier?.node?.text,
                             ValueParameterDeclaration.CATCH
-                        )
+                        ) { ktParameter.nameIdentifier?.node?.text }
 
                         buildProperty {
                             source = ktParameter.toFirSourceElement()
